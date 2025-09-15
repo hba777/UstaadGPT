@@ -1,3 +1,5 @@
+"use client"
+
 import { MainHeader } from '@/components/main-header'
 import { MainNav } from '@/components/main-nav'
 import {
@@ -6,8 +8,9 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '@/components/ui/sidebar'
+import withAuth from '@/components/withAuth'
 
-export default function AppLayout({
+function AppLayout({
   children,
 }: {
   children: React.ReactNode
@@ -26,3 +29,5 @@ export default function AppLayout({
     </SidebarProvider>
   )
 }
+
+export default withAuth(AppLayout);
