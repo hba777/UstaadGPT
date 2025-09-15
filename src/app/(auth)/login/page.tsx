@@ -26,10 +26,10 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.push('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,10 +66,6 @@ export default function LoginPage() {
       console.error("Error signing in with Google:", err);
     }
   };
-
-  if (loading || user) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <Card className="w-full max-w-sm">

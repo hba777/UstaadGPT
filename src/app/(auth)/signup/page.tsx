@@ -19,7 +19,7 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function SignupPage() {
-  const { signup, user, loading } = useAuthContext();
+  const { signup, user } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -27,10 +27,10 @@ export default function SignupPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.push('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -52,10 +52,6 @@ export default function SignupPage() {
       console.error("Error signing up:", err);
     }
   };
-
-  if (loading || user) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <Card className="w-full max-w-sm">
