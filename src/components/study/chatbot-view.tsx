@@ -25,12 +25,12 @@ export function ChatbotView({ documentContent }: ChatbotViewProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
+    if (viewportRef.current) {
+      viewportRef.current.scrollTo({
+        top: viewportRef.current.scrollHeight,
         behavior: 'smooth'
       });
     }
@@ -72,7 +72,7 @@ export function ChatbotView({ documentContent }: ChatbotViewProps) {
             AI Tutor Chat
         </div>
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm">
-        <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-full p-4" viewportRef={viewportRef}>
           <div className="flex flex-col gap-4">
             {messages.length === 0 && (
                 <div className="text-center text-muted-foreground pt-10">

@@ -1,3 +1,5 @@
+"use client"
+
 import { MainHeader } from '@/components/main-header'
 import { MainNav } from '@/components/main-nav'
 import {
