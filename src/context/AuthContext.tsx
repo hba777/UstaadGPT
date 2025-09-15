@@ -17,7 +17,6 @@ import { useRouter, usePathname } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
   signup: (email: string, password: string, username: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -29,7 +28,6 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -65,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push('/login');
         }
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -116,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
-    loading,
     signup,
     login,
     logout,
@@ -124,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuthContext = () => {

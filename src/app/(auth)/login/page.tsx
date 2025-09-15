@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const { login, signInWithGoogle, user, loading } = useAuthContext();
+  const { login, signInWithGoogle, user } = useAuthContext();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,13 +28,13 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.push("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  if (loading || (!loading && user)) {
-    // Show a loading indicator or null while checking auth state or redirecting
+  if (user) {
+    // Prevent rendering the login form if user is already logged in.
     return <div>Loading...</div>;
   }
 
@@ -66,10 +66,10 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <Button className="w-full" onClick={handleLogin} disabled={loading}>
+        <Button className="w-full" onClick={handleLogin}>
           Login
         </Button>
-        <Button variant="outline" className="w-full" onClick={signInWithGoogle} disabled={loading}>
+        <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
           Sign in with Google
         </Button>
       </CardContent>

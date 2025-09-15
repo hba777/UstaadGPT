@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
-  const { signup, user, loading } = useAuthContext();
+  const { signup, user } = useAuthContext();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,12 +29,12 @@ export default function SignupPage() {
   };
 
   useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.push("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  if (loading || (!loading && user)) {
+  if (user) {
     return <div>Loading...</div>;
   }
 
@@ -79,7 +79,7 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <Button className="w-full" onClick={handleSignup} disabled={loading}>
+        <Button className="w-full" onClick={handleSignup}>
           Sign up
         </Button>
       </CardContent>
