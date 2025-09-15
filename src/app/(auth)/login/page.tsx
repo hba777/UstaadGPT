@@ -26,6 +26,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   if (user) {
+    console.log("LoginPage: User is already logged in. Redirecting to /dashboard.");
     router.push('/dashboard');
     return null;
   }
@@ -43,15 +44,21 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    console.log("LoginPage: handleGoogleSignIn triggered.");
     setError("");
     try {
+      console.log("LoginPage: Calling signInWithGoogle from context.");
       const userCred = await signInWithGoogle();
+      console.log("LoginPage: signInWithGoogle promise resolved.", userCred);
+
       if (userCred) {
         const user = userCred.user;
+        console.log("LoginPage: User object from userCred:", user);
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         
         if (!userDoc.exists()) {
+          console.log("LoginPage: User document does not exist. Creating it.");
           await setDoc(userDocRef, {
             uid: user.uid,
             email: user.email,
@@ -59,12 +66,19 @@ export default function LoginPage() {
             photoURL: user.photoURL,
             createdAt: serverTimestamp(),
           });
+          console.log("LoginPage: User document created.");
+        } else {
+          console.log("LoginPage: User document already exists.");
         }
+        console.log("LoginPage: Redirecting to /dashboard.");
         router.push('/dashboard');
+      } else {
+        console.log("LoginPage: signInWithGoogle resolved but userCred is falsy.");
       }
     } catch (err: any) {
+      console.log("LoginPage: Caught an error in handleGoogleSignIn.");
       setError(err.message);
-      console.error("Error signing in with Google:", err);
+      console.error("LoginPage: Error signing in with Google:", err);
     }
   };
 

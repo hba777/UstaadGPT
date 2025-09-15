@@ -30,12 +30,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("AuthProvider: Subscribing to onAuthStateChanged.");
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      console.log("AuthProvider: onAuthStateChanged event fired.", { authUser });
       setUser(authUser);
       setLoading(false);
+      console.log("AuthProvider: Finished setting user and loading state.");
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log("AuthProvider: Unsubscribing from onAuthStateChanged.");
+      unsubscribe();
+    }
   }, []);
 
   const signup = (email: string, password: string) => {
@@ -54,9 +60,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return sendPasswordResetEmail(auth, email);
   };
 
-  const signInWithGoogle = () => {
+  const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    console.log("AuthContext: signInWithGoogle called. Creating provider.");
+    try {
+      console.log("AuthContext: Calling signInWithPopup.");
+      const result = await signInWithPopup(auth, provider);
+      console.log("AuthContext: signInWithPopup promise resolved successfully.", result);
+      return result;
+    } catch (error) {
+      console.error("AuthContext: signInWithPopup failed.", error);
+      throw error;
+    }
   };
 
   const value = {
