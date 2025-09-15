@@ -75,9 +75,9 @@ export function MainNav() {
                    <>
                     <LayoutGrid />
                     <div className="flex flex-col">
-                      <span>Classification</span>
+                      <span>Study Zone</span>
                        <span className="text-xs text-muted-foreground">
-                        of Books & Documents
+                        Summaries, Quizzes & more
                       </span>
                     </div>
                     {isActive("/study") && <SidebarMenuBadge />}
