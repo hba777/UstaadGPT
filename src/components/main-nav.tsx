@@ -36,26 +36,32 @@ export function MainNav() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/dashboard" passHref legacyBehavior>
+              <Link href="/dashboard" passHref >
                 <SidebarMenuButton asChild isActive={isActive('/dashboard')} tooltip="Dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
+                  <>
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/study" passHref legacyBehavior>
+              <Link href="/study" passHref >
                 <SidebarMenuButton asChild isActive={isActive('/study')} tooltip="Study Zone">
-                  <BookOpen />
-                  <span>Study Zone</span>
+                  <>
+                    <BookOpen />
+                    <span>Study Zone</span>
+                  </>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/settings" passHref legacyBehavior>
+              <Link href="/settings" passHref >
                 <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
-                  <Settings />
-                  <span>Settings</span>
+                  <>
+                    <Settings />
+                    <span>Settings</span>
+                  </>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
