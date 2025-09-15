@@ -22,6 +22,8 @@ const withAuth = <P extends object>(WrappedComponent: ComponentType<P>) => {
     return <WrappedComponent {...props} />;
   };
 
+  WithAuthComponent.displayName = `WithAuth(${WrappedComponent.displayName || WrappedComponent.name || 'Component'})`;
+
   return WithAuthComponent;
 };
 

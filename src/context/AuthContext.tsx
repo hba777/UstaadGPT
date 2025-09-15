@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authUser) {
         await checkAndCreateUser(authUser);
         setUser(authUser);
+        router.push('/dashboard');
       } else {
         setUser(null);
       }
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
 
   const signup = async (email: string, password: string, username: string) => {
