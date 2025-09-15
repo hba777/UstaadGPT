@@ -14,9 +14,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarGroupLabel,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -36,34 +33,29 @@ export function MainNav() {
         </div>
       </SidebarHeader>
       <Separator />
-      <SidebarGroup>
-        <SidebarGroupLabel>Main Navigation</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <NavItem
-              href="/dashboard"
-              isActive={isActive("/dashboard")}
-              icon={<LayoutDashboard size={20} />}
-              title="Dashboard"
-              description="Overview & Analytics"
-            />
-            <NavItem
-              href="/study"
-              isActive={isActive("/study")}
-              icon={<BookOpenCheck size={20} />}
-              title="Study"
-              description="Generate notes & quizzes"
-            />
-            <NavItem
-              href="/settings"
-              isActive={isActive("/settings")}
-              icon={<Settings size={20} />}
-              title="Settings"
-              description="Manage account & preferences"
-            />
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <SidebarMenu className="mt-4">
+        <NavItem
+          href="/dashboard"
+          isActive={isActive("/dashboard")}
+          icon={<LayoutDashboard size={20} />}
+          title="Dashboard"
+          description="Overview & Analytics"
+        />
+        <NavItem
+          href="/study"
+          isActive={isActive("/study")}
+          icon={<BookOpenCheck size={20} />}
+          title="Study"
+          description="Generate notes & quizzes"
+        />
+        <NavItem
+          href="/settings"
+          isActive={isActive("/settings")}
+          icon={<Settings size={20} />}
+          title="Settings"
+          description="Manage account & preferences"
+        />
+      </SidebarMenu>
       <SidebarFooter className="mt-auto">
         <p className="text-xs text-muted-foreground">© 2024 UstaadGPT</p>
       </SidebarFooter>
