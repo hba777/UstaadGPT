@@ -23,8 +23,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "./mode-toggle"
+import { useAuthContext } from "@/context/AuthContext"
 
 export function UserNav() {
+    const { logout } = useAuthContext();
     const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar')
   return (
     <DropdownMenu>
@@ -74,7 +76,7 @@ export function UserNav() {
             <ModeToggle />
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
