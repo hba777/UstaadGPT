@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -7,9 +6,7 @@ import {
   LayoutDashboard,
   Settings,
   BrainCircuit,
-  LayoutGrid,
   BookOpenCheck,
-  HelpCircle,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -53,44 +50,16 @@ export function MainNav() {
             <NavItem
               href="/study"
               isActive={isActive("/study")}
-              icon={<LayoutGrid size={20} />}
-              title="Classification"
-              description="of Books & Documents"
-            />
-            <NavItem
-              href="#"
-              isActive={false}
               icon={<BookOpenCheck size={20} />}
-              title="In-depth Analysis"
-              description="Review of Classified Books"
+              title="Study"
+              description="Generate notes & quizzes"
             />
-            <NavItem
-              href="#"
-              isActive={false}
-              icon={<BrainCircuit size={20} />}
-              title="Model Settings"
-              description="AI Training & Settings"
-            />
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      <SidebarGroup>
-        <SidebarGroupLabel>Other</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
             <NavItem
               href="/settings"
               isActive={isActive("/settings")}
               icon={<Settings size={20} />}
-              title="Admin Settings"
-              description=""
-            />
-            <NavItem
-              href="#"
-              isActive={false}
-              icon={<HelpCircle size={20} />}
-              title="Help & Support"
-              description=""
+              title="Settings"
+              description="Manage account & preferences"
             />
           </SidebarMenu>
         </SidebarGroupContent>
