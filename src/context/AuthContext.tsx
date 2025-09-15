@@ -1,6 +1,6 @@
 'use client';
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
@@ -11,18 +11,16 @@ import {
   signInWithPopup,
   User,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signup: (email: string, password: string, username: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<any>;
+  signup: (email: string, password: string) => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,82 +28,35 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  const checkAndCreateUser = async (authUser: User) => {
-    const userDocRef = doc(db, "users", authUser.uid);
-    try {
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName || 'New User',
-          photoURL: authUser.photoURL,
-          createdAt: serverTimestamp(),
-        });
-      }
-    } catch (error) {
-      console.error("Error checking or creating user document:", error);
-    }
-  };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      if (authUser) {
-        await checkAndCreateUser(authUser);
-        setUser(authUser);
-        router.push('/dashboard');
-      } else {
-        setUser(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
 
-
-  const signup = async (email: string, password: string, username: string) => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error("Error signing up:", error);
-    }
+  const signup = (email: string, password: string) => {
+    return createUserWithEmailAndPassword(auth, email, password);
   };
 
-  const login = async (email: string, password: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error("Error logging in:", error);
-    }
+  const login = (email: string, password: string) => {
+    return signInWithEmailAndPassword(auth, email, password);
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
+  const logout = () => {
+    return signOut(auth);
   };
   
-  const resetPassword = async (email: string) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      console.error("Error sending password reset email:", error);
-    }
+  const resetPassword = (email: string) => {
+    return sendPasswordResetEmail(auth, email);
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = () => {
     const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-    }
+    return signInWithPopup(auth, provider);
   };
 
   const value = {
@@ -118,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
 
 export const useAuthContext = () => {
