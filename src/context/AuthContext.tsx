@@ -38,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
-        console.log("User doc does not exist, creating...");
         await setDoc(userDocRef, {
           uid: authUser.uid,
           email: authUser.email,
@@ -46,9 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           photoURL: authUser.photoURL,
           createdAt: serverTimestamp(),
         });
-        console.log("User document created successfully.");
-      } else {
-        console.log("User document already exists.");
       }
     } catch (error) {
       console.error("Error checking or creating user document:", error);
@@ -57,16 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      setLoading(true);
       if (authUser) {
-        console.log("onAuthStateChanged: User is signed in.", authUser.uid);
         await checkAndCreateUser(authUser);
         setUser(authUser);
         if(pathname.startsWith('/login') || pathname.startsWith('/signup')) {
           router.push('/dashboard');
         }
       } else {
-        console.log("onAuthStateChanged: User is signed out.");
         setUser(null);
         if (!pathname.startsWith('/login') && !pathname.startsWith('/signup') && !pathname.startsWith('/reset-password')) {
           router.push('/login');
@@ -82,8 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, username: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest
+      await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
       console.error("Error signing up:", error);
     }
@@ -92,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest
     } catch (error) {
       console.error("Error logging in:", error);
     }
@@ -101,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
-      // onAuthStateChanged will handle the rest
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -119,7 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle the rest
     } catch (error) {
       console.error("Error signing in with Google:", error);
     }
