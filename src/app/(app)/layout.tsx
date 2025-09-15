@@ -8,12 +8,28 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '@/components/ui/sidebar'
+import { useAuthContext } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { user, loading } = useAuthContext()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  if (loading || !user) {
+    return <div>Loading...</div>
+  }
+
   return (
     <SidebarProvider>
       <Sidebar>

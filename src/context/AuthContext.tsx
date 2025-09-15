@@ -1,14 +1,140 @@
 'use client';
 
-import { useAuth } from "@/hooks/use-auth";
-import { createContext, useContext } from "react";
+import { auth, db } from "@/lib/firebase";
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  User,
+} from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter, usePathname } from 'next/navigation';
 
-const AuthContext = createContext<ReturnType<typeof useAuth> | null>(null);
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  signup: (email: string, password: string, username: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const auth = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  const checkAndCreateUser = async (authUser: User) => {
+    const userDocRef = doc(db, "users", authUser.uid);
+    try {
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        console.log("User doc does not exist, creating...");
+        await setDoc(userDocRef, {
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName || 'New User',
+          photoURL: authUser.photoURL,
+          createdAt: serverTimestamp(),
+        });
+        console.log("User document created successfully.");
+      } else {
+        console.log("User document already exists.");
+      }
+    } catch (error) {
+      console.error("Error checking or creating user document:", error);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      setLoading(true);
+      if (authUser) {
+        console.log("onAuthStateChanged: User is signed in.", authUser.uid);
+        await checkAndCreateUser(authUser);
+        setUser(authUser);
+        if(pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+          router.push('/dashboard');
+        }
+      } else {
+        console.log("onAuthStateChanged: User is signed out.");
+        setUser(null);
+        if (!pathname.startsWith('/login') && !pathname.startsWith('/signup') && !pathname.startsWith('/reset-password')) {
+          router.push('/login');
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router, pathname]);
+
+
+  const signup = async (email: string, password: string, username: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error("Error signing up:", error);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error("Error logging in:", error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+  
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      console.error("Error sending password reset email:", error);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    signup,
+    login,
+    logout,
+    resetPassword,
+    signInWithGoogle,
+  };
+
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
 
 export const useAuthContext = () => {
