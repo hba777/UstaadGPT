@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
-  BookOpen,
   Settings,
   BrainCircuit,
   LayoutGrid,
@@ -17,7 +16,6 @@ import { cn } from "@/lib/utils"
 import {
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton,
   SidebarHeader,
   SidebarGroupLabel,
   SidebarGroup,
