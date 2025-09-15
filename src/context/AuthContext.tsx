@@ -7,8 +7,6 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
   User,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -20,7 +18,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<any>;
   signup: (email: string, password: string) => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
-  signInWithGoogle: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,18 +27,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("AuthProvider: Subscribing to onAuthStateChanged.");
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      console.log("AuthProvider: onAuthStateChanged event fired.", { authUser });
       setUser(authUser);
       setLoading(false);
-      console.log("AuthProvider: Finished setting user and loading state.");
     });
 
-    return () => {
-      console.log("AuthProvider: Unsubscribing from onAuthStateChanged.");
-      unsubscribe();
-    }
+    return () => unsubscribe();
   }, []);
 
   const signup = (email: string, password: string) => {
@@ -60,20 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return sendPasswordResetEmail(auth, email);
   };
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    console.log("AuthContext: signInWithGoogle called. Creating provider.");
-    try {
-      console.log("AuthContext: Calling signInWithPopup.");
-      const result = await signInWithPopup(auth, provider);
-      console.log("AuthContext: signInWithPopup promise resolved successfully.", result);
-      return result;
-    } catch (error) {
-      console.error("AuthContext: signInWithPopup failed.", error);
-      throw error;
-    }
-  };
-
   const value = {
     user,
     loading,
@@ -81,7 +58,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     resetPassword,
-    signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;

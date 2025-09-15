@@ -16,17 +16,17 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 export default function LoginPage() {
-  const { login, signInWithGoogle, user } = useAuthContext();
+  const { login, user } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
 
   if (user) {
-    console.log("LoginPage: User is already logged in. Redirecting to /dashboard.");
     router.push('/dashboard');
     return null;
   }
@@ -44,12 +44,12 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    console.log("LoginPage: handleGoogleSignIn triggered.");
     setError("");
+    const provider = new GoogleAuthProvider();
     try {
-      console.log("LoginPage: Calling signInWithGoogle from context.");
-      const userCred = await signInWithGoogle();
-      console.log("LoginPage: signInWithGoogle promise resolved.", userCred);
+      console.log("LoginPage: Calling signInWithPopup.");
+      const userCred = await signInWithPopup(auth, provider);
+      console.log("LoginPage: signInWithPopup promise resolved.", userCred);
 
       if (userCred) {
         const user = userCred.user;
@@ -73,12 +73,11 @@ export default function LoginPage() {
         console.log("LoginPage: Redirecting to /dashboard.");
         router.push('/dashboard');
       } else {
-        console.log("LoginPage: signInWithGoogle resolved but userCred is falsy.");
+        console.log("LoginPage: signInWithPopup resolved but userCred is falsy.");
       }
     } catch (err: any) {
-      console.log("LoginPage: Caught an error in handleGoogleSignIn.");
-      setError(err.message);
       console.error("LoginPage: Error signing in with Google:", err);
+      setError(err.message);
     }
   };
 
