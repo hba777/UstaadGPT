@@ -13,22 +13,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const { login, signInWithGoogle, user } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     await login(email, password);
   };
-
-  if (user) {
-    // Prevent rendering the login form if user is already logged in, while auth provider handles redirect.
-    return <div>Loading...</div>;
-  }
 
   return (
     <Card className="w-full max-w-sm">

@@ -8,19 +8,13 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '@/components/ui/sidebar'
-import { useAuthContext } from '@/context/AuthContext'
+import withAuth from '@/components/withAuth'
 
-export default function AppLayout({
+function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user } = useAuthContext()
-
-  if (!user) {
-    return <div>Loading...</div>
-  }
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -35,3 +29,5 @@ export default function AppLayout({
     </SidebarProvider>
   )
 }
+
+export default withAuth(AppLayout);

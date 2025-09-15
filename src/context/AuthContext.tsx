@@ -13,10 +13,11 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   signup: (email: string, password: string, username: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,8 +29,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   const checkAndCreateUser = async (authUser: User) => {
     const userDocRef = doc(db, "users", authUser.uid);
@@ -54,20 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authUser) {
         await checkAndCreateUser(authUser);
         setUser(authUser);
-        if(pathname.startsWith('/login') || pathname.startsWith('/signup')) {
-          router.push('/dashboard');
-        }
       } else {
         setUser(null);
-        if (!pathname.startsWith('/login') && !pathname.startsWith('/signup') && !pathname.startsWith('/reset-password')) {
-          router.push('/login');
-        }
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, router]);
+  }, []);
 
 
   const signup = async (email: string, password: string, username: string) => {
@@ -114,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
+    loading,
     signup,
     login,
     logout,
