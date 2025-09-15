@@ -26,12 +26,10 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
+  if (user) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();

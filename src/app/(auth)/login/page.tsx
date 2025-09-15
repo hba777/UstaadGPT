@@ -13,23 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function LoginPage() {
-  const { login, signInWithGoogle, user, loading } = useAuthContext();
+  const { login, signInWithGoogle, user } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
 
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
+  if (user) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,23 +43,25 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    setError("");
     try {
       const userCred = await signInWithGoogle();
-      const user = userCred.user;
-      
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || 'New User',
-          photoURL: user.photoURL,
-          createdAt: serverTimestamp(),
-        });
+      if (userCred) {
+        const user = userCred.user;
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || 'New User',
+            photoURL: user.photoURL,
+            createdAt: serverTimestamp(),
+          });
+        }
+        router.push('/dashboard');
       }
-      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
       console.error("Error signing in with Google:", err);
