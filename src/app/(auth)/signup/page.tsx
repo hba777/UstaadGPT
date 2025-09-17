@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -18,6 +17,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type { UserProfile } from "@/models/user";
 
 export default function SignupPage() {
   const { signup, user } = useAuthContext();
@@ -39,14 +39,16 @@ export default function SignupPage() {
       const userCred = await signup(email, password);
       const user = userCred.user;
 
-      await setDoc(doc(db, "users", user.uid), {
+      const newUserProfile: Omit<UserProfile, 'createdAt'> & { createdAt: any } = {
         uid: user.uid,
-        email: user.email,
+        email: user.email!,
         displayName: username,
         bio: "",
         photoURL: "",
         createdAt: serverTimestamp(),
-      });
+      };
+
+      await setDoc(doc(db, "users", user.uid), newUserProfile);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
@@ -113,5 +115,3 @@ export default function SignupPage() {
     </Card>
   );
 }
-
-    

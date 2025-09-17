@@ -8,22 +8,12 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  User as FirebaseAuthUser,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
-
-// This will be the user profile type from Firestore
-interface UserProfile {
-  uid: string;
-  displayName: string;
-  email: string;
-  photoURL?: string;
-  bio?: string;
-  // Add other fields from your 'users' collection document
-}
+import type { UserProfile } from "@/models/user";
 
 interface AuthContextType {
-  user: UserProfile | null; // This now holds the Firestore profile data
+  user: UserProfile | null;
   loading: boolean;
   logout: () => Promise<void>;
   login: (email: string, password: string) => Promise<any>;
@@ -48,12 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(userDoc.data() as UserProfile);
         } else {
           // This case might happen if the Firestore doc creation fails after signup
-          // For now, we'll set a minimal profile
+          // Or for users that signed in with Google before the profile creation was in place
           setUser({
             uid: authUser.uid,
             email: authUser.email!,
             displayName: authUser.displayName || 'New User',
-          });
+          } as UserProfile);
         }
       } else {
         // User is signed out

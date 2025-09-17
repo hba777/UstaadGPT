@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,12 +11,10 @@ import { UserSearch, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { UserProfile } from "@/models/user";
 
-interface FoundUser {
-  uid: string;
-  displayName: string;
-  photoURL?: string;
-}
+type FoundUser = Pick<UserProfile, 'uid' | 'displayName' | 'photoURL'>;
+
 
 function FindFriendsTab() {
   const { user } = useAuthContext();
@@ -89,7 +86,7 @@ function FindFriendsTab() {
         <Card>
             <CardContent className="p-6">
                 {isLoading ? (
-                    <div className="space-y-4 animate-pulse">
+                    <div className="space-y-4">
                         {[...Array(3)].map((_, i) => (
                             <div key={i} className="flex items-center space-x-4">
                                 <Skeleton className="h-12 w-12 rounded-full bg-primary/20" />
@@ -147,7 +144,7 @@ function MyFriendsTab() {
                 const userDocRef = doc(db, 'users', friendData.uid);
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
-                    const userData = userDoc.data();
+                    const userData = userDoc.data() as UserProfile;
                     friendList.push({
                         uid: userData.uid,
                         displayName: userData.displayName,
