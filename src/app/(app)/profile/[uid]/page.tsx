@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ChangeEvent } from 'react';
 import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, Inbox, Edit, Save } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, Edit, Save, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -34,6 +34,18 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     const [bio, setBio] = useState(userProfile.bio || '');
     const [photoURL, setPhotoURL] = useState(userProfile.photoURL || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [open, setOpen] = useState(false);
+
+    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoURL(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -48,6 +60,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
             await updateDoc(userDocRef, updateData);
             onProfileUpdate(updateData);
             toast({ title: "Profile updated successfully!" });
+            setOpen(false); // Close the dialog on success
         } catch (error) {
             console.error("Error updating profile:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not update profile." });
@@ -57,7 +70,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     };
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
             </DialogTrigger>
@@ -72,14 +85,17 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
                             <AvatarImage src={photoURL} alt="Profile avatar" />
                             <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
+                        <Button asChild variant="outline">
+                            <label htmlFor="photo-upload" className="cursor-pointer">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Photo
+                                <input id="photo-upload" type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} />
+                            </label>
+                        </Button>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="displayName" className="text-right">Name</Label>
                         <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="photoURL" className="text-right">Photo URL</Label>
-                        <Input id="photoURL" value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} className="col-span-3" placeholder="https://example.com/image.png" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="bio" className="text-right">Bio</Label>
@@ -280,5 +296,7 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     </div>
   );
 }
+
+    
 
     
