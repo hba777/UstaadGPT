@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, ChangeEvent, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, Inbox, Edit, Save, Upload, Scissors } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, Edit, Save, Upload, Scissors, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -66,7 +66,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     const [completedCrop, setCompletedCrop] = useState<Crop>()
     const [isCropping, setIsCropping] = useState(false)
     const imgRef = useRef<HTMLImageElement>(null)
-    const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -86,22 +86,22 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     }
 
     async function handleCropConfirm() {
-        const image = imgRef.current
-        const previewCanvas = previewCanvasRef.current
-        if (!image || !previewCanvas || !completedCrop) {
-            throw new Error('Crop canvas does not exist')
+        const image = imgRef.current;
+        if (!image || !completedCrop || !completedCrop.width || !completedCrop.height) {
+            toast({ variant: "destructive", title: "Error", description: "Could not crop image." });
+            return;
         }
 
-        const scaleX = image.naturalWidth / image.width
-        const scaleY = image.naturalHeight / image.height
+        const canvas = document.createElement('canvas');
+        const scaleX = image.naturalWidth / image.width;
+        const scaleY = image.naturalHeight / image.height;
+        canvas.width = completedCrop.width * scaleX;
+        canvas.height = completedCrop.height * scaleY;
+        const ctx = canvas.getContext('2d');
 
-        const offscreen = new OffscreenCanvas(
-            completedCrop.width * scaleX,
-            completedCrop.height * scaleY,
-        )
-        const ctx = offscreen.getContext('2d')
         if (!ctx) {
-            throw new Error('No 2d context')
+            toast({ variant: "destructive", title: "Error", description: "Could not process image." });
+            return;
         }
 
         ctx.drawImage(
@@ -112,24 +112,18 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
             completedCrop.height * scaleY,
             0,
             0,
-            offscreen.width,
-            offscreen.height,
-        )
-        
-        const blob = await offscreen.getBlob({
-            type: 'image/png',
-        })
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPhotoURL(reader.result as string);
-        };
-        reader.readAsDataURL(blob);
+            canvas.width,
+            canvas.height
+        );
 
-        setIsCropping(false)
-        setImgSrc('')
+        const dataUrl = canvas.toDataURL('image/png');
+        setPhotoURL(dataUrl);
+        setIsCropping(false);
+        setImgSrc('');
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     }
-
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -152,84 +146,104 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
             setIsSaving(false);
         }
     };
+    
+    const handleCancelCrop = () => {
+        setIsCropping(false);
+        setImgSrc('');
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    }
+
+    // Reset state when dialog opens/closes
+    useEffect(() => {
+        if (!open) {
+            // Reset to initial profile state
+            setDisplayName(userProfile.displayName);
+            setBio(userProfile.bio || '');
+            setPhotoURL(userProfile.photoURL || '');
+            // Reset cropping state
+            setIsCropping(false);
+            setImgSrc('');
+            setCrop(undefined);
+            setCompletedCrop(undefined);
+        }
+    }, [open, userProfile]);
 
     return (
-        <>
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit Profile</DialogTitle>
-                    <DialogDescription>Make changes to your profile here. Click save when you're done.</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="flex flex-col items-center gap-4">
-                        <Avatar className="h-24 w-24">
-                            <AvatarImage src={photoURL} alt="Profile avatar" />
-                            <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <Button asChild variant="outline">
-                            <label htmlFor="photo-upload" className="cursor-pointer">
-                                <Upload className="mr-2 h-4 w-4" />
-                                Change Photo
-                                <input id="photo-upload" type="file" accept="image/*" className="sr-only" onChange={onSelectFile} />
-                            </label>
-                        </Button>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="displayName" className="text-right">Name</Label>
-                        <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="bio" className="text-right">Bio</Label>
-                        <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} className="col-span-3" placeholder="Tell us a little about yourself" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <><Save className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
-                    </Button>
-                </DialogFooter>
+                {isCropping ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Crop your new photo</DialogTitle>
+                            <DialogDescription>Adjust the selection to frame your profile picture.</DialogDescription>
+                        </DialogHeader>
+                         <div className="flex justify-center p-4 bg-muted/50 rounded-md">
+                            {imgSrc && (
+                                <ReactCrop
+                                    crop={crop}
+                                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                    onComplete={(c) => setCompletedCrop(c)}
+                                    aspect={1}
+                                    circularCrop
+                                >
+                                    <img
+                                        ref={imgRef}
+                                        alt="Crop me"
+                                        src={imgSrc}
+                                        onLoad={onImageLoad}
+                                        style={{ maxHeight: '60vh' }}
+                                    />
+                                </ReactCrop>
+                            )}
+                        </div>
+                        <DialogFooter>
+                             <Button variant="outline" onClick={handleCancelCrop}><X className="mr-2 h-4 w-4" />Cancel</Button>
+                             <Button onClick={handleCropConfirm}><Scissors className="mr-2 h-4 w-4" /> Confirm Crop</Button>
+                        </DialogFooter>
+                    </>
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Edit Profile</DialogTitle>
+                            <DialogDescription>Make changes to your profile here. Click save when you're done.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="flex flex-col items-center gap-4">
+                                <Avatar className="h-24 w-24">
+                                    <AvatarImage src={photoURL} alt="Profile avatar" />
+                                    <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <Button asChild variant="outline">
+                                    <label htmlFor="photo-upload" className="cursor-pointer">
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Change Photo
+                                        <input id="photo-upload" type="file" accept="image/*" className="sr-only" onChange={onSelectFile} ref={fileInputRef} />
+                                    </label>
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="displayName" className="text-right">Name</Label>
+                                <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="bio" className="text-right">Bio</Label>
+                                <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} className="col-span-3" placeholder="Tell us a little about yourself" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? <><Save className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" />Save Changes</>}
+                            </Button>
+                        </DialogFooter>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
-
-        {/* Cropping Modal */}
-        <Dialog open={isCropping} onOpenChange={setIsCropping}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Crop your new photo</DialogTitle>
-                    <DialogDescription>Adjust the selection to frame your profile picture.</DialogDescription>
-                </DialogHeader>
-                <div className="flex justify-center">
-                    {imgSrc && (
-                        <ReactCrop
-                            crop={crop}
-                            onChange={(_, percentCrop) => setCrop(percentCrop)}
-                            onComplete={(c) => setCompletedCrop(c)}
-                            aspect={1}
-                            circularCrop
-                        >
-                            <img
-                                ref={imgRef}
-                                alt="Crop me"
-                                src={imgSrc}
-                                onLoad={onImageLoad}
-                                style={{ transform: `scale(1) rotate(0deg)` }}
-                            />
-                        </ReactCrop>
-                    )}
-                </div>
-                {/* Hidden canvas for preview */}
-                <canvas ref={previewCanvasRef} style={{ display: 'none' }} />
-                <DialogFooter>
-                     <Button variant="outline" onClick={() => setIsCropping(false)}>Cancel</Button>
-                     <Button onClick={handleCropConfirm}><Scissors className="mr-2 h-4 w-4" /> Crop</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </>
     );
 }
 
@@ -422,4 +436,3 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     </div>
   );
 }
-
