@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -42,6 +43,8 @@ export default function SignupPage() {
         uid: user.uid,
         email: user.email,
         displayName: username,
+        bio: "",
+        photoURL: "",
         createdAt: serverTimestamp(),
       });
       router.push('/dashboard');
@@ -110,3 +113,5 @@ export default function SignupPage() {
     </Card>
   );
 }
+
+    

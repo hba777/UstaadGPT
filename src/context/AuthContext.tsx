@@ -1,34 +1,64 @@
 'use client';
 
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  User,
+  User as FirebaseAuthUser,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
+// This will be the user profile type from Firestore
+interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  bio?: string;
+  // Add other fields from your 'users' collection document
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null; // This now holds the Firestore profile data
   loading: boolean;
   logout: () => Promise<void>;
   login: (email: string, password: string) => Promise<any>;
   signup: (email: string, password: string) => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
+  updateUserProfile: (profileData: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      setUser(authUser);
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        // User is signed in, fetch their profile from Firestore
+        const userDocRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUser(userDoc.data() as UserProfile);
+        } else {
+          // This case might happen if the Firestore doc creation fails after signup
+          // For now, we'll set a minimal profile
+          setUser({
+            uid: authUser.uid,
+            email: authUser.email!,
+            displayName: authUser.displayName || 'New User',
+          });
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -51,6 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return sendPasswordResetEmail(auth, email);
   };
 
+  const updateUserProfile = (profileData: Partial<UserProfile>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      return { ...prevUser, ...profileData };
+    });
+  }
+
   const value = {
     user,
     loading,
@@ -58,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     resetPassword,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
