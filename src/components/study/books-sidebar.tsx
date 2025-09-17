@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { getUserBooks, searchUserBooks, deleteBook } from "@/lib/firestore"
 import type { Book } from "@/lib/firestore"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthContext } from "@/context/AuthContext"
 
 interface BooksSidebarProps {
   onBookSelect: (book: Book) => void
@@ -34,7 +34,7 @@ export function BooksSidebar({ onBookSelect, selectedBookId, className = "" }: B
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [deletingBookId, setDeletingBookId] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user } = useAuthContext()
   const { toast } = useToast()
 
   // Load user books
@@ -102,15 +102,15 @@ export function BooksSidebar({ onBookSelect, selectedBookId, className = "" }: B
     return date.toLocaleDateString()
   }
 
-  if (!user) {
-    return (
-      <div className={`p-4 ${className}`}>
-        <p className="text-sm text-muted-foreground text-center">
-          Sign in to view your books
-        </p>
-      </div>
-    )
-  }
+// if (!user) {
+//   return (
+//     <div className={`p-4 ${className}`}>
+//       <p className="text-sm text-muted-foreground text-center">
+//         Sign in to view your books
+//       </p>
+//     </div>
+//   )
+// }
 
   return (
     <div className={`flex flex-col h-full ${className}`}>

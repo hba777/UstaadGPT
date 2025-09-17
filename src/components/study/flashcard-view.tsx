@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Flashcard } from "./flashcard"
 import { saveFlashcardsToFirestore } from "@/lib/firestore"
-import { useAuth } from "@/hooks/use-auth" 
+import { useAuthContext } from "@/context/AuthContext" 
 
 interface FlashcardViewProps {
   documentContent: string
@@ -32,7 +32,7 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
   const [isSaved, setIsSaved] = useState(false)
   const [bookTitle, setBookTitle] = useState(bookName || "")
   const { toast } = useToast()
-  const { user } = useAuth() // Get current user
+  const { user } = useAuthContext()
 
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
