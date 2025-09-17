@@ -1,17 +1,16 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, getDocs, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { useEffect, useState } from 'react';
+import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
-import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, Inbox, Edit, Camera, Save } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, Edit, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -33,19 +32,8 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     const { toast } = useToast();
     const [displayName, setDisplayName] = useState(userProfile.displayName);
     const [bio, setBio] = useState(userProfile.bio || '');
-    const [newPhoto, setNewPhoto] = useState<string | null>(null);
+    const [photoURL, setPhotoURL] = useState(userProfile.photoURL || '');
     const [isSaving, setIsSaving] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setNewPhoto(event.target?.result as string);
-            };
-            reader.readAsDataURL(e.target.files[0]);
-        }
-    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -54,14 +42,8 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
             const updateData: {[key: string]: any} = {
                 displayName,
                 bio,
+                photoURL,
             };
-
-            if (newPhoto) {
-                const storageRef = ref(storage, `profile-pictures/${userProfile.uid}`);
-                await uploadString(storageRef, newPhoto, 'data_url');
-                const downloadURL = await getDownloadURL(storageRef);
-                updateData.photoURL = downloadURL;
-            }
 
             await updateDoc(userDocRef, updateData);
             onProfileUpdate(updateData);
@@ -87,18 +69,17 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
                 <div className="grid gap-4 py-4">
                     <div className="flex flex-col items-center gap-4">
                         <Avatar className="h-24 w-24">
-                            <AvatarImage src={newPhoto || userProfile.photoURL} alt="Profile avatar" />
+                            <AvatarImage src={photoURL} alt="Profile avatar" />
                             <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoChange} className="hidden" />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            <Camera className="mr-2 h-4 w-4" />
-                            Change Photo
-                        </Button>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="displayName" className="text-right">Name</Label>
                         <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="col-span-3" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="photoURL" className="text-right">Photo URL</Label>
+                        <Input id="photoURL" value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} className="col-span-3" placeholder="https://example.com/image.png" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="bio" className="text-right">Bio</Label>
@@ -107,7 +88,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
                 </div>
                 <DialogFooter>
                     <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? 'Saving...' : 'Save Changes'}
+                        {isSaving ? <><Save className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
