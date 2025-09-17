@@ -7,8 +7,9 @@ import { useAuthContext } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { LoaderCircle, UserSearch } from "lucide-react";
+import { UserSearch } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 interface FoundUser {
   uid: string;
@@ -35,9 +36,6 @@ export default function FriendsPage() {
       setHasSearched(true);
       try {
         const usersRef = collection(db, "users");
-        // Firestore queries are case-sensitive. A common workaround is to store a lowercase version of the name.
-        // For simplicity here, we'll query for exact matches on what's typed, but this is limited.
-        // A more robust solution would use a search service like Algolia or a different database structure.
         const q = query(
             usersRef,
             orderBy("displayName"),
@@ -50,7 +48,6 @@ export default function FriendsPage() {
         const users: FoundUser[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          // Exclude the current user from the results
           if (data.uid !== user?.uid) {
             users.push({
               uid: data.uid,
@@ -67,7 +64,6 @@ export default function FriendsPage() {
       }
     };
 
-    // Debounce search
     const debounceTimeout = setTimeout(() => {
         searchUsers();
     }, 500);
@@ -109,14 +105,16 @@ export default function FriendsPage() {
                     ))}
                 </div>
             ) : results.length > 0 ? (
-                <ul className="space-y-4">
+                <ul className="space-y-2">
                     {results.map((foundUser) => (
-                    <li key={foundUser.uid} className="flex items-center gap-4">
+                    <li key={foundUser.uid}>
+                       <Link href={`/profile/${foundUser.uid}`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={foundUser.photoURL} alt={`${foundUser.displayName}'s avatar`} />
                             <AvatarFallback>{foundUser.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{foundUser.displayName}</span>
+                       </Link>
                     </li>
                     ))}
                 </ul>
