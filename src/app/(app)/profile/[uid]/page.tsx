@@ -1,14 +1,15 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, onSnapshot, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
@@ -18,7 +19,7 @@ interface UserProfile {
   email: string;
 }
 
-type FriendStatus = 'not_friends' | 'pending' | 'friends' | 'self';
+type FriendStatus = 'not_friends' | 'pending_sent' | 'pending_received' | 'friends' | 'self';
 
 export default function ProfilePage({ params }: { params: { uid: string } }) {
   const { user: currentUser } = useAuthContext();
@@ -26,6 +27,7 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [friendStatus, setFriendStatus] = useState<FriendStatus>('not_friends');
+  const [friendRequestId, setFriendRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params.uid) return;
@@ -54,36 +56,45 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
       return;
     }
 
-    const requestsRef = collection(db, "friendRequests");
-    const q = query(
-        requestsRef,
-        where('from', 'in', [currentUser.uid, profileUser.uid]),
-        where('to', 'in', [currentUser.uid, profileUser.uid])
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) {
-            setFriendStatus('not_friends');
+    // Check if they are friends
+    const friendsRef = collection(db, 'users', currentUser.uid, 'friends');
+    const friendsQuery = query(friendsRef, where('uid', '==', profileUser.uid));
+    const unsubscribeFriends = onSnapshot(friendsQuery, (snapshot) => {
+        if (!snapshot.empty) {
+            setFriendStatus('friends');
             return;
         }
-        let statusUpdated = false;
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.status === 'pending') {
-                setFriendStatus('pending');
-                statusUpdated = true;
-            } else if (data.status === 'accepted') {
-                setFriendStatus('friends');
-                statusUpdated = true;
+
+        // If not friends, check for friend requests
+        const requestsRef = collection(db, "friendRequests");
+        const q = query(
+            requestsRef,
+            where('from', 'in', [currentUser.uid, profileUser.uid]),
+            where('to', 'in', [currentUser.uid, profileUser.uid]),
+            where('status', '==', 'pending')
+        );
+
+        const unsubscribeRequests = onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                setFriendStatus('not_friends');
+                setFriendRequestId(null);
+                return;
+            }
+            
+            const requestDoc = snapshot.docs[0];
+            const data = requestDoc.data();
+            setFriendRequestId(requestDoc.id);
+
+            if (data.from === currentUser.uid) {
+                setFriendStatus('pending_sent');
+            } else {
+                setFriendStatus('pending_received');
             }
         });
-
-        if (!statusUpdated) {
-            setFriendStatus('not_friends');
-        }
+        return () => unsubscribeRequests();
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeFriends();
 
   }, [currentUser, profileUser]);
 
@@ -102,7 +113,6 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
           title: "Friend Request Sent",
           description: `Your request to ${profileUser.displayName} has been sent.`,
       });
-      setFriendStatus('pending');
     } catch (error) {
       console.error("Error sending friend request:", error);
       toast({
@@ -113,14 +123,28 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     }
   };
 
+  const handleCancelRequest = async () => {
+    if (!friendRequestId) return;
+    try {
+        await deleteDoc(doc(db, "friendRequests", friendRequestId));
+        toast({ title: "Friend request cancelled." });
+    } catch(error) {
+        console.error("Error cancelling friend request:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not cancel request." });
+    }
+  }
+
+
   const renderFriendButton = () => {
     switch (friendStatus) {
         case 'self':
             return <p className="text-sm text-muted-foreground">This is your profile.</p>;
         case 'friends':
-            return <Button disabled><UserCheck className="mr-2" /> Friends</Button>;
-        case 'pending':
-            return <Button disabled><Clock className="mr-2" /> Request Pending</Button>;
+            return <Button disabled variant="secondary"><UserCheck className="mr-2" /> Friends</Button>;
+        case 'pending_sent':
+            return <Button variant="secondary" onClick={handleCancelRequest}><Clock className="mr-2" /> Request Sent</Button>;
+        case 'pending_received':
+            return <Button onClick={() => router.push('/inbox')}><Inbox className="mr-2" /> Respond in Inbox</Button>;
         case 'not_friends':
         default:
             return <Button onClick={handleAddFriend}><UserPlus className="mr-2" /> Add Friend</Button>;

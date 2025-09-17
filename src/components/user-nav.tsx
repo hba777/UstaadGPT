@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -9,6 +10,7 @@ import {
   Settings,
   User,
   Inbox,
+  Users,
 } from "lucide-react"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -95,6 +97,12 @@ export function UserNav() {
                     <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">{pendingRequests}</span>
                 )}
              </DropdownMenuItem>
+          </Link>
+          <Link href="/friends">
+            <DropdownMenuItem>
+              <Users className="mr-2 h-4 w-4" />
+              <span>My Friends</span>
+            </DropdownMenuItem>
           </Link>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />
