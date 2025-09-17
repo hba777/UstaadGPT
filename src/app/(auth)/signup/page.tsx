@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -14,10 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type { UserProfile } from "@/models/user";
 
 export default function SignupPage() {
   const { signup, user } = useAuthContext();
@@ -27,10 +27,11 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  if (user) {
-    router.push('/dashboard');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,20 +40,30 @@ export default function SignupPage() {
       const userCred = await signup(email, password);
       const user = userCred.user;
 
-      await setDoc(doc(db, "users", user.uid), {
+      const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLogin'> & { createdAt: any, lastLogin: any } = {
         uid: user.uid,
-        email: user.email,
+        email: user.email!,
         displayName: username,
         bio: "",
         photoURL: "",
+        points: 0,
+        loginStreak: 0,
         createdAt: serverTimestamp(),
-      });
+        lastLogin: null, // Set to null on creation
+      };
+
+      await setDoc(doc(db, "users", user.uid), newUserProfile);
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: any) -> {
       setError(err.message);
       console.error("Error signing up:", err);
     }
   };
+
+  if (user) {
+    return null; // or a loading spinner
+  }
+
 
   return (
     <Card className="w-full max-w-sm">
@@ -113,5 +124,3 @@ export default function SignupPage() {
     </Card>
   );
 }
-
-    

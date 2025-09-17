@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -9,7 +7,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 
-
+import type { UserProfile } from '@/models/user';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,14 +19,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-
-interface UserProfile {
-  uid: string;
-  displayName: string;
-  photoURL?: string;
-  email: string;
-  bio?: string;
-}
 
 type FriendStatus = 'not_friends' | 'pending_sent' | 'pending_received' | 'friends' | 'self';
 
@@ -129,7 +119,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
         setIsSaving(true);
         try {
             const userDocRef = doc(db, 'users', userProfile.uid);
-            const updateData: {[key: string]: any} = {
+            const updateData: Partial<UserProfile> = {
                 displayName,
                 bio,
                 photoURL,
