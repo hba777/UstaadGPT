@@ -9,4 +9,7 @@ export interface UserProfile {
   photoURL?: string;
   bio?: string;
   createdAt: Timestamp;
+  points: number;
+  loginStreak: number;
+  lastLogin: Timestamp;
 }

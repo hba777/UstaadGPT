@@ -2,6 +2,7 @@
 
 import { MainHeader } from '@/components/main-header'
 import { MainNav } from '@/components/main-nav'
+import { StreakAnimation } from '@/components/streak-animation'
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +26,7 @@ function AppLayout({
       <SidebarInset>
         <MainHeader />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <StreakAnimation />
       </SidebarInset>
     </SidebarProvider>
   )

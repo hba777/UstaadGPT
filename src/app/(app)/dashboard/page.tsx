@@ -1,3 +1,5 @@
+"use client";
+
 import { Award, BookCheck, Flame } from 'lucide-react'
 import {
   Card,
@@ -8,8 +10,11 @@ import {
 } from '@/components/ui/card'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { ProgressChart } from '@/components/dashboard/progress-chart'
+import { useAuthContext } from '@/context/AuthContext';
 
 export default function DashboardPage() {
+  const { user } = useAuthContext();
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -21,7 +26,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           title="Study Streak"
-          value="12 Days"
+          value={`${user?.loginStreak || 0} Day${(user?.loginStreak || 0) !== 1 ? 's' : ''}`}
           description="Keep it up! Consistency is key."
           icon={<Flame className="h-4 w-4 text-muted-foreground" />}
         />
@@ -33,7 +38,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Points Earned"
-          value="2,315"
+          value={user?.points?.toLocaleString() || '0'}
           description="You're climbing the leaderboard!"
           icon={<Award className="h-4 w-4 text-muted-foreground" />}
         />

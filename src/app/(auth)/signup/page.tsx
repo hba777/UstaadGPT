@@ -39,13 +39,16 @@ export default function SignupPage() {
       const userCred = await signup(email, password);
       const user = userCred.user;
 
-      const newUserProfile: Omit<UserProfile, 'createdAt'> & { createdAt: any } = {
+      const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLogin'> & { createdAt: any, lastLogin: any } = {
         uid: user.uid,
         email: user.email!,
         displayName: username,
         bio: "",
         photoURL: "",
+        points: 0,
+        loginStreak: 0,
         createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
       };
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
