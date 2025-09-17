@@ -51,7 +51,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
         setIsSaving(true);
         try {
             const userDocRef = doc(db, 'users', userProfile.uid);
-            const updateData: Partial<UserProfile> = {
+            const updateData: {[key: string]: any} = {
                 displayName,
                 bio,
             };
@@ -299,3 +299,5 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     </div>
   );
 }
+
+    
