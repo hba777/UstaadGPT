@@ -54,7 +54,7 @@ export default function SignupPage() {
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
       router.push('/dashboard');
-    } catch (err: any) -> {
+    } catch (err: any) {
       setError(err.message);
       console.error("Error signing up:", err);
     }
