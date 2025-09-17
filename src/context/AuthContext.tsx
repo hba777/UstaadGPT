@@ -84,13 +84,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleDailyLogin = async (currentUser: UserProfile) => {
     const today = new Date();
-    const lastLoginDate = (currentUser.lastLogin as Timestamp).toDate();
+    
+    // Guard against undefined or non-Timestamp lastLogin values
+    if (!(currentUser.lastLogin instanceof Timestamp)) {
+        // If lastLogin is missing or invalid, treat it as the first login
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userDocRef, {
+            lastLogin: serverTimestamp(),
+            loginStreak: 1, // Start their streak
+            points: currentUser.points || 0,
+        });
+        return;
+    }
+
+    const lastLoginDate = currentUser.lastLogin.toDate();
 
     if (isSameDay(lastLoginDate, today)) {
         return; // Already logged in today
     }
 
-    let newStreak = currentUser.loginStreak;
+    let newStreak = currentUser.loginStreak || 0;
     if(isYesterday(lastLoginDate, today)) {
         newStreak++;
     } else {
