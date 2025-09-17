@@ -34,7 +34,6 @@ import { useRouter } from "next/navigation"
 export function UserNav() {
     const { user, logout } = useAuthContext();
     const router = useRouter();
-    const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
     const [pendingRequests, setPendingRequests] = useState(0);
 
     useEffect(() => {
@@ -64,8 +63,8 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {user?.photoURL ? <AvatarImage src={user.photoURL} alt="User avatar" /> : userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User avatar" data-ai-hint={userAvatar.imageHint} />}
-            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            <AvatarImage src={user?.photoURL || undefined} alt="User avatar" />
+            <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
           {pendingRequests > 0 && (
             <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />

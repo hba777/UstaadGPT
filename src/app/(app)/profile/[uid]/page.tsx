@@ -113,7 +113,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
 }
 
 export default function ProfilePage({ params }: { params: { uid: string } }) {
-  const { user: currentUser } = useAuthContext();
+  const { user: currentUser, updateUserProfile } = useAuthContext();
   const { toast } = useToast();
   const router = useRouter();
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
@@ -190,7 +190,9 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
 
   const handleProfileUpdate = (updatedData: Partial<UserProfile>) => {
     if (profileUser) {
-        setProfileUser(prev => prev ? { ...prev, ...updatedData } : null);
+        const newProfileData = { ...profileUser, ...updatedData };
+        setProfileUser(newProfileData as UserProfile);
+        updateUserProfile(newProfileData);
     }
   };
 
@@ -296,7 +298,3 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     </div>
   );
 }
-
-    
-
-    
