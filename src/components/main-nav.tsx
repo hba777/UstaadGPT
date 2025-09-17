@@ -119,9 +119,12 @@ function NavItem({
                 </span>
               )}
             </div>
-            {isActive && (
-              <span className="ml-auto h-2 w-2 rounded-full bg-primary" />
-            )}
+            <span
+              className={cn(
+                'ml-auto h-2 w-2 rounded-full bg-primary',
+                !isActive && 'invisible'
+              )}
+            />
           </div>
         </Button>
       </Link>
