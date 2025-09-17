@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import type { UserProfile } from "@/models/user";
 
 export default function LoginPage() {
   const { login, user } = useAuthContext();
@@ -31,10 +32,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, router]);
-
-  if (user) {
-    return null; // or a loading spinner
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,13 +61,18 @@ export default function LoginPage() {
         
         if (!userDoc.exists()) {
           console.log("LoginPage: User document does not exist. Creating it.");
-          await setDoc(userDocRef, {
+          const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLogin'> & { createdAt: any, lastLogin: any } = {
             uid: user.uid,
-            email: user.email,
+            email: user.email!,
             displayName: user.displayName || 'New User',
-            photoURL: user.photoURL,
+            photoURL: user.photoURL || "",
+            points: 0,
+            loginStreak: 0,
+            bio: "",
             createdAt: serverTimestamp(),
-          });
+            lastLogin: null, // Set to null on creation
+          };
+          await setDoc(userDocRef, newUserProfile);
           console.log("LoginPage: User document created.");
         } else {
           console.log("LoginPage: User document already exists.");
@@ -85,6 +87,11 @@ export default function LoginPage() {
       setError(err.message);
     }
   };
+
+  if (user) {
+    return null; // or a loading spinner
+  }
+
 
   return (
     <Card className="w-full max-w-sm">

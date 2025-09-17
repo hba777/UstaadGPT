@@ -1,13 +1,14 @@
 'use client';
 
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore";
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  User as FirebaseAuthUser,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { UserProfile } from "@/models/user";
@@ -51,27 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
-        const userDocRef = doc(db, 'users', authUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        let userProfile: UserProfile;
-
-        if (userDoc.exists()) {
-          userProfile = userDoc.data() as UserProfile;
-          setUser(userProfile);
-          await handleDailyLogin(userProfile);
-        } else {
-          // This case might happen if the Firestore doc creation fails after signup
-          // Or for users that signed in with Google before the profile creation was in place
-           userProfile = {
-            uid: authUser.uid,
-            email: authUser.email!,
-            displayName: authUser.displayName || 'New User',
-            points: 0,
-            loginStreak: 0,
-            lastLogin: serverTimestamp() as Timestamp,
-          } as UserProfile;
-          setUser(userProfile);
-        }
+        setLoading(true);
+        const userProfile = await fetchAndProcessUserProfile(authUser);
+        setUser(userProfile);
       } else {
         setUser(null);
       }
@@ -82,25 +65,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDailyLogin = async (currentUser: UserProfile) => {
+  const fetchAndProcessUserProfile = async (authUser: FirebaseAuthUser): Promise<UserProfile> => {
+    const userDocRef = doc(db, 'users', authUser.uid);
+    const userDoc = await getDoc(userDocRef);
+    let userProfile: UserProfile;
+
+    if (userDoc.exists()) {
+      userProfile = userDoc.data() as UserProfile;
+    } else {
+      // This case might happen if the Firestore doc creation fails after signup
+      // Or for users that signed in with Google before the profile creation was in place
+      userProfile = {
+        uid: authUser.uid,
+        email: authUser.email!,
+        displayName: authUser.displayName || 'New User',
+        photoURL: authUser.photoURL || "",
+        points: 0,
+        loginStreak: 0,
+        createdAt: serverTimestamp() as Timestamp,
+        lastLogin: null as any, // Set to null initially
+      };
+      // We don't setDoc here, as signup/login flows handle it.
+      // We create a temporary profile to pass to handleDailyLogin
+    }
+    
+    // Process login streak and return the most up-to-date user profile
+    const updatedProfile = await handleDailyLogin(userProfile);
+    return updatedProfile;
+  }
+
+  const handleDailyLogin = async (currentUser: UserProfile): Promise<UserProfile> => {
     const today = new Date();
+    const userDocRef = doc(db, 'users', currentUser.uid);
     
     // Guard against undefined or non-Timestamp lastLogin values
-    if (!(currentUser.lastLogin instanceof Timestamp)) {
+    if (!currentUser.lastLogin || !(currentUser.lastLogin instanceof Timestamp)) {
         // If lastLogin is missing or invalid, treat it as the first login
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userDocRef, {
+        const updatedData = {
             lastLogin: serverTimestamp(),
-            loginStreak: 1, // Start their streak
-            points: currentUser.points || 0,
-        });
-        return;
+            loginStreak: 1,
+            points: (currentUser.points || 0) + 50,
+        };
+        await updateDoc(userDocRef, updatedData);
+        setStreakBonus({ streak: 1, points: 50 });
+        return { ...currentUser, ...updatedData, lastLogin: new Timestamp(Math.floor(Date.now() / 1000), 0) };
     }
 
     const lastLoginDate = currentUser.lastLogin.toDate();
 
     if (isSameDay(lastLoginDate, today)) {
-        return; // Already logged in today
+        return currentUser; // Already logged in today, no changes needed
     }
 
     let newStreak = currentUser.loginStreak || 0;
@@ -113,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const pointsGained = newStreak >= 5 ? 250 : 50;
     const newPoints = (currentUser.points || 0) + pointsGained;
 
-    const userDocRef = doc(db, 'users', currentUser.uid);
     const updatedData = {
         loginStreak: newStreak,
         points: newPoints,
@@ -121,9 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     await updateDoc(userDocRef, updatedData);
 
-    setUser(prevUser => prevUser ? { ...prevUser, ...updatedData, lastLogin: new Timestamp(Math.floor(Date.now() / 1000), 0) } as UserProfile : null);
-
     setStreakBonus({ streak: newStreak, points: pointsGained });
+    // Return the updated profile so the UI can update immediately
+    return { ...currentUser, ...updatedData, lastLogin: new Timestamp(Math.floor(Date.now() / 1000), 0) };
   };
 
 

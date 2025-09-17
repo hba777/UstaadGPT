@@ -33,10 +33,6 @@ export default function SignupPage() {
     }
   }, [user, router]);
 
-  if (user) {
-    return null; // or a loading spinner
-  }
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -53,16 +49,21 @@ export default function SignupPage() {
         points: 0,
         loginStreak: 0,
         createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
+        lastLogin: null, // Set to null on creation
       };
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: any) -> {
       setError(err.message);
       console.error("Error signing up:", err);
     }
   };
+
+  if (user) {
+    return null; // or a loading spinner
+  }
+
 
   return (
     <Card className="w-full max-w-sm">
