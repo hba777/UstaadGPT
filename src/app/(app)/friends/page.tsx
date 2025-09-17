@@ -89,12 +89,12 @@ function FindFriendsTab() {
         <Card>
             <CardContent className="p-6">
                 {isLoading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-pulse">
                         {[...Array(3)].map((_, i) => (
                             <div key={i} className="flex items-center space-x-4">
-                                <Skeleton className="h-12 w-12 rounded-full" />
+                                <Skeleton className="h-12 w-12 rounded-full bg-primary/20" />
                                 <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[250px]" />
+                                    <Skeleton className="h-4 w-[250px] bg-primary/20" />
                                 </div>
                             </div>
                         ))}
@@ -166,12 +166,12 @@ function MyFriendsTab() {
          <Card>
             <CardContent className="p-6">
                 {isLoading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-pulse">
                         {[...Array(3)].map((_ , i) => (
                             <div key={i} className="flex items-center space-x-4">
-                                <Skeleton className="h-12 w-12 rounded-full" />
+                                <Skeleton className="h-12 w-12 rounded-full bg-primary/20" />
                                 <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[250px]" />
+                                    <Skeleton className="h-4 w-[250px] bg-primary/20" />
                                 </div>
                             </div>
                         ))}
