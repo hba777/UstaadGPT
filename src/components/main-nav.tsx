@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -97,7 +98,7 @@ function NavItem({
       <Link href={href} passHref>
         <Button
           variant={isActive ? "secondary" : "ghost"}
-          className={cn("h-auto w-full justify-start p-3")}
+          className={cn("h-auto w-full justify-start p-3 relative")}
           asChild
         >
           <div className="flex items-center w-full">
@@ -120,7 +121,7 @@ function NavItem({
               )}
             </div>
             {isActive && (
-              <span className="ml-auto h-2 w-2 rounded-full bg-primary" />
+                 <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
             )}
           </div>
         </Button>
