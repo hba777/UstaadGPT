@@ -91,7 +91,7 @@ function FindFriendsTab() {
                 {isLoading ? (
                     <div className="space-y-4">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="flex items-center space-x-4">
+                            <div key={i} className="flex items-center space-x-4 animate-pulse">
                                 <Skeleton className="h-12 w-12 rounded-full" />
                                 <div className="space-y-2">
                                     <Skeleton className="h-4 w-[250px]" />
@@ -168,7 +168,7 @@ function MyFriendsTab() {
                 {isLoading ? (
                     <div className="space-y-4">
                         {[...Array(3)].map((_ , i) => (
-                            <div key={i} className="flex items-center space-x-4">
+                            <div key={i} className="flex items-center space-x-4 animate-pulse">
                                 <Skeleton className="h-12 w-12 rounded-full" />
                                 <div className="space-y-2">
                                     <Skeleton className="h-4 w-[250px]" />
