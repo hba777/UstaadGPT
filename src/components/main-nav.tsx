@@ -7,6 +7,8 @@ import {
   Settings,
   BrainCircuit,
   BookOpenCheck,
+  Users,
+  Inbox,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -22,7 +24,7 @@ import { Button } from "./ui/button"
 export function MainNav() {
   const pathname = usePathname()
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => pathname.startsWith(path)
 
   return (
     <>
@@ -47,6 +49,20 @@ export function MainNav() {
           icon={<BookOpenCheck size={20} />}
           title="Study"
           description="Generate notes & quizzes"
+        />
+        <NavItem
+          href="/friends"
+          isActive={isActive("/friends")}
+          icon={<Users size={20} />}
+          title="Friends"
+          description="Find and connect with users"
+        />
+         <NavItem
+          href="/inbox"
+          isActive={isActive("/inbox")}
+          icon={<Inbox size={20} />}
+          title="Inbox"
+          description="Manage your friend requests"
         />
         <NavItem
           href="/settings"

@@ -1,6 +1,7 @@
+
 "use client"
 
-import Image from "next/image"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   CreditCard,
@@ -8,7 +9,11 @@ import {
   LogOut,
   Settings,
   User,
+  Inbox,
+  Users,
 } from "lucide-react"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -29,7 +34,21 @@ import { useRouter } from "next/navigation"
 export function UserNav() {
     const { user, logout } = useAuthContext();
     const router = useRouter();
-    const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar')
+    const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
+    const [pendingRequests, setPendingRequests] = useState(0);
+
+    useEffect(() => {
+      if (!user) return;
+
+      const requestsRef = collection(db, "friendRequests");
+      const q = query(requestsRef, where("to", "==", user.uid), where("status", "==", "pending"));
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPendingRequests(snapshot.size);
+      });
+
+      return () => unsubscribe();
+    }, [user]);
 
     const handleLogout = async () => {
       try {
@@ -48,6 +67,9 @@ export function UserNav() {
             {user?.photoURL ? <AvatarImage src={user.photoURL} alt="User avatar" /> : userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User avatar" data-ai-hint={userAvatar.imageHint} />}
             <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
+          {pendingRequests > 0 && (
+            <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -61,11 +83,20 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href="/settings">
+          <Link href={`/profile/${user?.uid}`}>
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
+          </Link>
+          <Link href="/inbox">
+             <DropdownMenuItem>
+                <Inbox className="mr-2 h-4 w-4" />
+                <span>Inbox</span>
+                {pendingRequests > 0 && (
+                    <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">{pendingRequests}</span>
+                )}
+             </DropdownMenuItem>
           </Link>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />
