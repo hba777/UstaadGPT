@@ -57,13 +57,24 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
 
     const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
+          const file = e.target.files[0];
+          // ~2MB limit for the initial file select
+          if (file.size > 2 * 1024 * 1024) {
+              toast({
+                  variant: "destructive",
+                  title: "Image Too Large",
+                  description: "Please select an image smaller than 2MB.",
+              });
+              return;
+          }
+
           setCrop(undefined) // Makes crop preview update between images.
           const reader = new FileReader()
           reader.addEventListener('load', () => {
               setImgSrc(reader.result?.toString() || '')
               setIsCropping(true)
           })
-          reader.readAsDataURL(e.target.files[0])
+          reader.readAsDataURL(file)
         }
     }
 
@@ -104,6 +115,18 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
         );
 
         const dataUrl = canvas.toDataURL('image/png');
+        
+        // Firestore has a 1 MiB limit for document fields. 
+        // Check the length of the data URL string.
+        if (dataUrl.length > 1048487) {
+            toast({
+                variant: "destructive",
+                title: "Cropped Image Too Large",
+                description: "The cropped area is too large. Please select a smaller area or use a smaller image.",
+            });
+            return;
+        }
+
         setPhotoURL(dataUrl);
         setIsCropping(false);
         setImgSrc('');
