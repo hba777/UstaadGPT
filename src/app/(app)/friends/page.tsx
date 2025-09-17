@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuthContext } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -167,7 +167,7 @@ function MyFriendsTab() {
             <CardContent className="p-6">
                 {isLoading ? (
                     <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => (
+                        {[...Array(3)].map((_ , i) => (
                             <div key={i} className="flex items-center space-x-4">
                                 <Skeleton className="h-12 w-12 rounded-full" />
                                 <div className="space-y-2">

@@ -98,12 +98,6 @@ export function UserNav() {
                 )}
              </DropdownMenuItem>
           </Link>
-          <Link href="/friends">
-            <DropdownMenuItem>
-              <Users className="mr-2 h-4 w-4" />
-              <span>My Friends</span>
-            </DropdownMenuItem>
-          </Link>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Billing</span>

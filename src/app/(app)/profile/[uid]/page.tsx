@@ -9,8 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, UserX } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface UserProfile {
   uid: string;
@@ -24,6 +25,7 @@ type FriendStatus = 'not_friends' | 'pending_sent' | 'pending_received' | 'frien
 export default function ProfilePage({ params }: { params: { uid: string } }) {
   const { user: currentUser } = useAuthContext();
   const { toast } = useToast();
+  const router = useRouter();
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [friendStatus, setFriendStatus] = useState<FriendStatus>('not_friends');
