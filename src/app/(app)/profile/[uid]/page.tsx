@@ -1,16 +1,20 @@
 
+
 "use client";
 
-import { useEffect, useState, ChangeEvent } from 'react';
+import { useEffect, useState, ChangeEvent, useRef } from 'react';
 import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
+
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, Inbox, Edit, Save, Upload } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, Edit, Save, Upload, Scissors } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -28,6 +32,26 @@ interface UserProfile {
 
 type FriendStatus = 'not_friends' | 'pending_sent' | 'pending_received' | 'friends' | 'self';
 
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number,
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  )
+}
+
 function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: UserProfile, onProfileUpdate: (data: Partial<UserProfile>) => void }) {
     const { toast } = useToast();
     const [displayName, setDisplayName] = useState(userProfile.displayName);
@@ -36,16 +60,76 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     const [isSaving, setIsSaving] = useState(false);
     const [open, setOpen] = useState(false);
 
-    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoURL(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+    // Cropping state
+    const [imgSrc, setImgSrc] = useState('')
+    const [crop, setCrop] = useState<Crop>()
+    const [completedCrop, setCompletedCrop] = useState<Crop>()
+    const [isCropping, setIsCropping] = useState(false)
+    const imgRef = useRef<HTMLImageElement>(null)
+    const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+
+    const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+          setCrop(undefined) // Makes crop preview update between images.
+          const reader = new FileReader()
+          reader.addEventListener('load', () => {
+              setImgSrc(reader.result?.toString() || '')
+              setIsCropping(true)
+          })
+          reader.readAsDataURL(e.target.files[0])
         }
-    };
+    }
+
+    function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+        const { width, height } = e.currentTarget
+        setCrop(centerAspectCrop(width, height, 1))
+    }
+
+    async function handleCropConfirm() {
+        const image = imgRef.current
+        const previewCanvas = previewCanvasRef.current
+        if (!image || !previewCanvas || !completedCrop) {
+            throw new Error('Crop canvas does not exist')
+        }
+
+        const scaleX = image.naturalWidth / image.width
+        const scaleY = image.naturalHeight / image.height
+
+        const offscreen = new OffscreenCanvas(
+            completedCrop.width * scaleX,
+            completedCrop.height * scaleY,
+        )
+        const ctx = offscreen.getContext('2d')
+        if (!ctx) {
+            throw new Error('No 2d context')
+        }
+
+        ctx.drawImage(
+            image,
+            completedCrop.x * scaleX,
+            completedCrop.y * scaleY,
+            completedCrop.width * scaleX,
+            completedCrop.height * scaleY,
+            0,
+            0,
+            offscreen.width,
+            offscreen.height,
+        )
+        
+        const blob = await offscreen.getBlob({
+            type: 'image/png',
+        })
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPhotoURL(reader.result as string);
+        };
+        reader.readAsDataURL(blob);
+
+        setIsCropping(false)
+        setImgSrc('')
+    }
+
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -70,6 +154,7 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
     };
 
     return (
+        <>
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
@@ -88,8 +173,8 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
                         <Button asChild variant="outline">
                             <label htmlFor="photo-upload" className="cursor-pointer">
                                 <Upload className="mr-2 h-4 w-4" />
-                                Upload Photo
-                                <input id="photo-upload" type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} />
+                                Change Photo
+                                <input id="photo-upload" type="file" accept="image/*" className="sr-only" onChange={onSelectFile} />
                             </label>
                         </Button>
                     </div>
@@ -109,6 +194,42 @@ function EditProfileDialog({ userProfile, onProfileUpdate }: { userProfile: User
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Cropping Modal */}
+        <Dialog open={isCropping} onOpenChange={setIsCropping}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Crop your new photo</DialogTitle>
+                    <DialogDescription>Adjust the selection to frame your profile picture.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center">
+                    {imgSrc && (
+                        <ReactCrop
+                            crop={crop}
+                            onChange={(_, percentCrop) => setCrop(percentCrop)}
+                            onComplete={(c) => setCompletedCrop(c)}
+                            aspect={1}
+                            circularCrop
+                        >
+                            <img
+                                ref={imgRef}
+                                alt="Crop me"
+                                src={imgSrc}
+                                onLoad={onImageLoad}
+                                style={{ transform: `scale(1) rotate(0deg)` }}
+                            />
+                        </ReactCrop>
+                    )}
+                </div>
+                {/* Hidden canvas for preview */}
+                <canvas ref={previewCanvasRef} style={{ display: 'none' }} />
+                <DialogFooter>
+                     <Button variant="outline" onClick={() => setIsCropping(false)}>Cancel</Button>
+                     <Button onClick={handleCropConfirm}><Scissors className="mr-2 h-4 w-4" /> Crop</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
 
@@ -192,7 +313,10 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     if (profileUser) {
         const newProfileData = { ...profileUser, ...updatedData };
         setProfileUser(newProfileData as UserProfile);
-        updateUserProfile(newProfileData);
+        // Also update the global context
+        if (currentUser && currentUser.uid === profileUser.uid) {
+            updateUserProfile(updatedData);
+        }
     }
   };
 
@@ -298,3 +422,4 @@ export default function ProfilePage({ params }: { params: { uid: string } }) {
     </div>
   );
 }
+
