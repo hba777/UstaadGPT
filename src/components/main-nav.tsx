@@ -7,6 +7,7 @@ import {
   Settings,
   BrainCircuit,
   BookOpenCheck,
+  Users,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -47,6 +48,13 @@ export function MainNav() {
           icon={<BookOpenCheck size={20} />}
           title="Study"
           description="Generate notes & quizzes"
+        />
+        <NavItem
+          href="/friends"
+          isActive={isActive("/friends")}
+          icon={<Users size={20} />}
+          title="Friends"
+          description="Find and connect with users"
         />
         <NavItem
           href="/settings"
