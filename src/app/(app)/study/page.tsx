@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { DocumentUpload } from "@/components/study/document-upload"
 import { DocumentView } from "@/components/study/document-view"
-import { FlashcardView } from "@/components/study/flashcard-view"
+import { AITools } from "@/components/study/ai-tools"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 
 export default function StudyPage() {
@@ -33,7 +33,7 @@ export default function StudyPage() {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
             <div className="p-6 h-full">
-                <FlashcardView documentContent={documentContent} bookName={documentName} />
+                <AITools documentContent={documentContent} />
             </div>
         </ResizablePanel>
        </ResizablePanelGroup>
