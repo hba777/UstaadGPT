@@ -10,6 +10,7 @@ import {
   BookOpenCheck,
   Users,
   Inbox,
+  Library,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -50,6 +51,13 @@ export function MainNav() {
           icon={<BookOpenCheck size={20} />}
           title="Study"
           description="Generate notes & quizzes"
+        />
+        <NavItem
+          href="/my-books"
+          isActive={isActive("/my-books")}
+          icon={<Library size={20} />}
+          title="My Books"
+          description="Review your saved books"
         />
         <NavItem
           href="/friends"

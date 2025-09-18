@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -14,15 +15,19 @@ interface FlashcardProps {
 export function Flashcard({ front, back }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
 
+  const handleCardClick = () => {
+    setIsFlipped(!isFlipped)
+  }
+
   return (
-    <div className="w-full h-64 [perspective:1000px]">
+    <div className="w-full h-64 [perspective:1000px] cursor-pointer" onClick={handleCardClick}>
       <div
         className={cn(
           "relative h-full w-full rounded-xl shadow-md transition-transform duration-700 [transform-style:preserve-3d]",
           isFlipped ? "[transform:rotateY(180deg)]" : ""
         )}
       >
-        <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-card p-6 text-center [backface-visibility:hidden]">
+        <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-primary/20 p-6 text-center [backface-visibility:hidden]">
           <p className="text-lg font-semibold text-card-foreground">{front}</p>
         </div>
         <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-accent p-6 text-center text-accent-foreground [transform:rotateY(180deg)] [backface-visibility:hidden]">
@@ -30,10 +35,10 @@ export function Flashcard({ front, back }: FlashcardProps) {
         </div>
       </div>
       <div className="mt-4 flex justify-center">
-        <Button variant="outline" onClick={() => setIsFlipped(!isFlipped)}>
-            <FlipHorizontal className="mr-2" />
-            Flip Card
-        </Button>
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <FlipHorizontal className="h-4 w-4" />
+            Click card to flip
+        </div>
       </div>
     </div>
   )
