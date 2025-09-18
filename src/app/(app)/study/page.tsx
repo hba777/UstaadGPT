@@ -9,10 +9,12 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 
 export default function StudyPage() {
   const [documentContent, setDocumentContent] = useState<string>("")
+  const [documentName, setDocumentName] = useState<string>("")
   const [isDocLoaded, setIsDocLoaded] = useState(false)
 
-  const handleUpload = (content: string) => {
+  const handleUpload = (content: string, name: string) => {
     setDocumentContent(content)
+    setDocumentName(name)
     setIsDocLoaded(true)
   }
 
@@ -31,7 +33,7 @@ export default function StudyPage() {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
             <div className="p-6 h-full">
-                <FlashcardView documentContent={documentContent} />
+                <FlashcardView documentContent={documentContent} bookName={documentName} />
             </div>
         </ResizablePanel>
        </ResizablePanelGroup>
