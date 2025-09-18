@@ -9,7 +9,9 @@ import {
     where, 
     orderBy,
     serverTimestamp,
-    deleteDoc
+    deleteDoc,
+    getDoc,
+    Timestamp
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
   
@@ -46,14 +48,13 @@ import {
   }: SaveFlashcardsParams): Promise<string> {
     try {
       const bookData: Partial<Book> & { userId: string; title: string; flashcards: Flashcard[]; updatedAt: any } = {
-  userId,
-  title: bookTitle,
-  flashcards,
-  documentContent: documentContent?.substring(0, 500),
-  updatedAt: serverTimestamp(),
-  ...(bookId ? {} : { createdAt: serverTimestamp() }),
-}
-  
+        userId,
+        title: bookTitle,
+        flashcards,
+        documentContent,
+        updatedAt: serverTimestamp(),
+      }
+
       if (bookId) {
         // Update existing book
         const bookRef = doc(db, 'books', bookId)
@@ -62,7 +63,10 @@ import {
       } else {
         // Create new book
         const booksCollection = collection(db, 'books')
-        const docRef = await addDoc(booksCollection, bookData)
+        const docRef = await addDoc(booksCollection, {
+            ...bookData,
+            createdAt: serverTimestamp()
+        })
         return docRef.id
       }
     } catch (error) {
@@ -77,8 +81,7 @@ import {
       const booksCollection = collection(db, 'books')
       const q = query(
         booksCollection,
-        where('userId', '==', userId),
-        orderBy('updatedAt', 'desc')
+        where('userId', '==', userId)
       )
       
       const querySnapshot = await getDocs(q)
@@ -90,6 +93,13 @@ import {
           ...doc.data()
         } as Book)
       })
+
+      // Sort books by updatedAt timestamp descending
+      books.sort((a, b) => {
+        const dateA = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(0);
+        const dateB = b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
       
       return books
     } catch (error) {
@@ -101,11 +111,16 @@ import {
   // Get a specific book by ID
   export async function getBookById(bookId: string, userId: string): Promise<Book | null> {
     try {
-      const books = await getUserBooks(userId)
-      return books.find(book => book.id === bookId) || null
+        const bookRef = doc(db, 'books', bookId);
+        const bookDoc = await getDoc(bookRef);
+
+        if (bookDoc.exists() && bookDoc.data().userId === userId) {
+            return { id: bookDoc.id, ...bookDoc.data() } as Book;
+        }
+        return null;
     } catch (error) {
-      console.error('Error fetching book:', error)
-      throw new Error('Failed to fetch book')
+        console.error('Error fetching book:', error);
+        throw new Error('Failed to fetch book');
     }
   }
   
