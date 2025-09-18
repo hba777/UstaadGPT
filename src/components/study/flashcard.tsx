@@ -14,8 +14,12 @@ interface FlashcardProps {
 export function Flashcard({ front, back }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
 
+  const handleCardClick = () => {
+    setIsFlipped(!isFlipped)
+  }
+
   return (
-    <div className="w-full h-64 [perspective:1000px]">
+    <div className="w-full h-64 [perspective:1000px] cursor-pointer" onClick={handleCardClick}>
       <div
         className={cn(
           "relative h-full w-full rounded-xl shadow-md transition-transform duration-700 [transform-style:preserve-3d]",
@@ -30,10 +34,10 @@ export function Flashcard({ front, back }: FlashcardProps) {
         </div>
       </div>
       <div className="mt-4 flex justify-center">
-        <Button variant="outline" onClick={() => setIsFlipped(!isFlipped)}>
-            <FlipHorizontal className="mr-2" />
-            Flip Card
-        </Button>
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <FlipHorizontal className="h-4 w-4" />
+            Click card to flip
+        </div>
       </div>
     </div>
   )
