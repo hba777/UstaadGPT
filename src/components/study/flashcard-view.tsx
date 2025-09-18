@@ -1,3 +1,4 @@
+
 "use client"
 import { useState } from "react"
 import { BookCopy, LoaderCircle, Save, Check } from "lucide-react"
@@ -18,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Flashcard } from "./flashcard"
 import { saveFlashcardsToFirestore } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext" 
+import { useRouter } from "next/navigation"
 
 interface FlashcardViewProps {
   documentContent: string
@@ -29,10 +31,12 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
   const [flashcards, setFlashcards] = useState<GenerateFlashcardsOutput["flashcards"]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  const [isSaved, setIsSaved] = useState(!!bookId)
+  const [currentBookId, setCurrentBookId] = useState(bookId)
   const [bookTitle, setBookTitle] = useState(bookName || "")
   const { toast } = useToast()
   const { user } = useAuthContext()
+  const router = useRouter()
 
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
@@ -85,18 +89,20 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
     setIsSaving(true)
     
     try {
-      await saveFlashcardsToFirestore({
+      const newBookId = await saveFlashcardsToFirestore({
         userId: user.uid,
-        bookId: bookId,
+        bookId: currentBookId,
         bookTitle: bookTitle.trim(),
         flashcards: flashcards,
         documentContent: documentContent
       })
       
+      setCurrentBookId(newBookId);
       setIsSaved(true)
       toast({
         title: "Success",
-        description: `Flashcards saved for "${bookTitle}"`,
+        description: `Book "${bookTitle}" has been saved.`,
+        action: <Button variant="outline" size="sm" onClick={() => router.push(`/my-books/${newBookId}`)}>View Book</Button>
       })
     } catch (error) {
       console.error("Error saving flashcards:", error)
@@ -112,6 +118,10 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
 
   return (
     <div className="flex flex-col gap-4 h-full">
+       <div className="flex items-center gap-2 text-lg font-semibold">
+        <BookCopy />
+        Flashcard Generator
+       </div>
       <div className="flex flex-col gap-2">
         <div>
           <Label htmlFor="book-title">Book Title</Label>
@@ -119,7 +129,10 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
             id="book-title"
             placeholder="Enter book title..."
             value={bookTitle}
-            onChange={(e) => setBookTitle(e.target.value)}
+            onChange={(e) => {
+                setBookTitle(e.target.value)
+                setIsSaved(false)
+            }}
             className="mt-1"
           />
         </div>
@@ -137,7 +150,7 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
           <Button 
             onClick={handleSaveFlashcards} 
             disabled={isSaving || flashcards.length === 0 || !bookTitle.trim()}
-            variant={isSaved ? "default" : "outline"}
+            variant={isSaved ? "secondary" : "default"}
             className="flex-1"
           >
             {isSaving ? (
@@ -147,7 +160,7 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
             ) : (
               <Save className="mr-2" />
             )}
-            {isSaved ? "Saved" : "Save Flashcards"}
+            {isSaved ? "Saved" : "Save Book"}
           </Button>
         </div>
       </div>
@@ -182,9 +195,11 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
         )}
         
         {!isLoading && flashcards.length === 0 && (
-          <p className="text-sm text-center text-muted-foreground">
-            Click the button to generate flashcards.
-          </p>
+          <div className="text-center text-muted-foreground p-8">
+            <BookCopy className="h-12 w-12 mx-auto mb-4" />
+            <p className="font-semibold">Generate flashcards from your document</p>
+            <p className="text-sm">Click the button above to get started.</p>
+          </div>
         )}
       </div>
     </div>

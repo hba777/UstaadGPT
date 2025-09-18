@@ -1,5 +1,7 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { FileText } from "lucide-react"
 
 interface DocumentViewProps {
   content: string
@@ -7,17 +9,20 @@ interface DocumentViewProps {
 
 export function DocumentView({ content }: DocumentViewProps) {
   return (
-    <Card className="h-[75svh]">
-      <CardHeader>
-        <CardTitle>Document Content</CardTitle>
-      </CardHeader>
-      <CardContent className="h-[calc(100%-4rem)] pb-6">
-        <ScrollArea className="h-full pr-4">
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-            {content}
-          </p>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div className="h-full flex flex-col gap-4">
+        <div className="flex items-center gap-2 text-lg font-semibold">
+            <FileText />
+            Document Content
+        </div>
+      <Card className="h-full flex-grow">
+        <CardContent className="h-full p-4">
+          <ScrollArea className="h-full pr-4">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {content}
+            </p>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
