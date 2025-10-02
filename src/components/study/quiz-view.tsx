@@ -1,7 +1,8 @@
+
 "use client"
 
-import { useState } from "react"
-import { Lightbulb, LoaderCircle, Check, X, Repeat, Award } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save } from "lucide-react"
 import { generateQuiz, type GenerateQuizOutput } from "@/ai/flows/generate-quiz"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -12,26 +13,52 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { saveQuizToFirestore, type QuizQuestion } from "@/lib/firestore"
+import { useAuthContext } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
 
 type QuizState = "not_started" | "loading" | "in_progress" | "submitted"
-type QuizQuestion = GenerateQuizOutput["quiz"][0]
 
 interface QuizViewProps {
-    documentContent: string
+    documentContent: string;
+    bookId?: string;
+    bookName?: string;
+    initialQuiz?: QuizQuestion[];
 }
 
-export function QuizView({ documentContent }: QuizViewProps) {
-  const [quiz, setQuiz] = useState<QuizQuestion[]>([])
-  const [quizState, setQuizState] = useState<QuizState>("not_started")
+export function QuizView({ documentContent, bookId, bookName, initialQuiz }: QuizViewProps) {
+  const [quiz, setQuiz] = useState<QuizQuestion[]>(initialQuiz || [])
+  const [quizState, setQuizState] = useState<QuizState>(initialQuiz && initialQuiz.length > 0 ? "in_progress" : "not_started")
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({})
   const [score, setScore] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSaved, setIsSaved] = useState(!!bookId && !!initialQuiz)
+  const [currentBookId, setCurrentBookId] = useState(bookId)
+  const [bookTitle, setBookTitle] = useState(bookName || "")
+
   const { toast } = useToast()
+  const { user } = useAuthContext()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (bookName) setBookTitle(bookName)
+    if (initialQuiz) {
+        setQuiz(initialQuiz)
+        setQuizState("in_progress")
+        setIsSaved(true)
+    }
+  }, [bookName, initialQuiz])
+
 
   const handleGenerateQuiz = async () => {
-    setQuizState("loading")
+    setIsLoading(true)
     setQuiz([])
     setUserAnswers({})
     setScore(0)
+    setIsSaved(false)
+
     try {
       const result = await generateQuiz({ documentText: documentContent })
       if (result.quiz.length === 0) {
@@ -53,6 +80,8 @@ export function QuizView({ documentContent }: QuizViewProps) {
         description: "Failed to generate quiz. Please try again.",
       })
       setQuizState("not_started")
+    } finally {
+        setIsLoading(false)
     }
   }
 
@@ -79,13 +108,46 @@ export function QuizView({ documentContent }: QuizViewProps) {
     setScore(0)
     setQuizState("in_progress")
   }
+  
+  const handleSaveQuiz = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Please sign in to save quizzes." });
+        return;
+    }
+    if (!bookTitle.trim()) {
+        toast({ variant: "destructive", title: "Please enter a book title." });
+        return;
+    }
+    if (quiz.length === 0) {
+        toast({ variant: "destructive", title: "Generate a quiz before saving." });
+        return;
+    }
 
-  const handleNewQuiz = () => {
-    setQuizState("not_started")
-    setQuiz([])
-    setUserAnswers({})
-    setScore(0)
-  }
+    setIsSaving(true);
+    try {
+        const newBookId = await saveQuizToFirestore({
+            userId: user.uid,
+            bookId: currentBookId,
+            bookTitle: bookTitle.trim(),
+            quiz: quiz,
+            documentContent: documentContent,
+        });
+
+        setCurrentBookId(newBookId);
+        setIsSaved(true);
+        toast({
+            title: "Quiz Saved!",
+            description: `The quiz has been saved to "${bookTitle}".`,
+            action: <Button variant="outline" size="sm" onClick={() => router.push(`/my-books/${newBookId}`)}>View Book</Button>
+        });
+    } catch (error) {
+        console.error("Error saving quiz:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not save quiz." });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quiz.length;
 
@@ -95,31 +157,46 @@ export function QuizView({ documentContent }: QuizViewProps) {
         <Lightbulb />
         Quiz Generator
        </div>
+       {!bookId && (
+        <div className="space-y-1">
+            <Label htmlFor="quiz-book-title">Book Title</Label>
+            <Input
+                id="quiz-book-title"
+                placeholder="Enter a title to save your quiz..."
+                value={bookTitle}
+                onChange={e => {
+                    setBookTitle(e.target.value)
+                    setIsSaved(false)
+                }}
+            />
+        </div>
+       )}
       <div className="flex gap-2">
-        <Button onClick={handleGenerateQuiz} disabled={quizState === "loading"} className="flex-1">
-          {quizState === "loading" ? (
+        <Button onClick={handleGenerateQuiz} disabled={isLoading} className="flex-1">
+          {isLoading ? (
             <LoaderCircle className="mr-2 animate-spin" />
           ) : (
             <Lightbulb className="mr-2" />
           )}
-          {quiz.length > 0 ? "Generate New Quiz" : "Generate Quiz"}
+          {quiz.length > 0 && !initialQuiz ? "Generate New Quiz" : "Generate Quiz"}
         </Button>
 
-        {quizState === "in_progress" && (
-            <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="flex-1">
-                Submit Quiz
-            </Button>
-        )}
-        {quizState === "submitted" && (
-             <Button onClick={handleRetake} variant="secondary" className="flex-1">
-                <Repeat className="mr-2 h-4 w-4" />
-                Retake Quiz
+        {quiz.length > 0 && (
+            <Button
+                onClick={handleSaveQuiz}
+                disabled={isSaving || !bookTitle.trim()}
+                variant={isSaved ? "secondary" : "default"}
+                className="flex-1"
+            >
+                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : isSaved ? <Check className="mr-2" /> : <Save className="mr-2" />}
+                {isSaved ? "Saved" : "Save Quiz"}
             </Button>
         )}
       </div>
+
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden">
         <ScrollArea className="h-full pr-4">
-          {quizState === "loading" && (
+          {isLoading && (
             <div className="space-y-6 p-2">
                 {[...Array(3)].map((_, i) => (
                     <div key={i} className="space-y-3">
@@ -134,7 +211,7 @@ export function QuizView({ documentContent }: QuizViewProps) {
             </div>
           )}
 
-          {quizState === "not_started" && (
+          {quizState === "not_started" && !isLoading && (
             <div className="text-center text-muted-foreground h-full flex flex-col items-center justify-center">
               <Lightbulb className="mx-auto h-12 w-12" />
               <p className="mt-2 font-semibold">Ready to test your knowledge?</p>
@@ -158,6 +235,12 @@ export function QuizView({ documentContent }: QuizViewProps) {
                            <p className="text-muted-foreground mt-1">({score} out of {quiz.length} correct)</p>
                            <Progress value={(score / quiz.length) * 100} className="w-full mt-4" />
                         </CardContent>
+                        <CardFooter className="flex justify-center">
+                            <Button onClick={handleRetake} variant="secondary">
+                                <Repeat className="mr-2 h-4 w-4" />
+                                Retake Quiz
+                            </Button>
+                        </CardFooter>
                     </Card>
                 )}
 
@@ -166,7 +249,14 @@ export function QuizView({ documentContent }: QuizViewProps) {
                         quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10')
                     )}>
                         <CardHeader>
-                            <CardTitle className="text-base">Question {qIndex + 1}</CardTitle>
+                            <CardTitle className="text-base flex justify-between items-center">
+                                <span>Question {qIndex + 1}</span>
+                                {quizState === 'submitted' && (
+                                     userAnswers[qIndex] === question.correctAnswerIndex ? 
+                                     <Check className="h-5 w-5 text-green-700" /> : 
+                                     <X className="h-5 w-5 text-red-700" />
+                                )}
+                            </CardTitle>
                             <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -181,20 +271,15 @@ export function QuizView({ documentContent }: QuizViewProps) {
 
                                     return (
                                         <div key={oIndex} className={cn(
-                                            "flex items-center space-x-3 p-3 rounded-md",
+                                            "flex items-center space-x-3 p-3 rounded-md transition-colors",
                                             quizState === "submitted" && isCorrect && "bg-green-500/20",
                                             quizState === "submitted" && !isCorrect && isSelected && "bg-red-500/20",
+                                            quizState !== "submitted" && "hover:bg-muted/50"
                                         )}>
                                             <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
                                             <Label htmlFor={`q${qIndex}o${oIndex}`} className="flex-1 cursor-pointer">
                                                 {option}
                                             </Label>
-                                            {quizState === "submitted" && (
-                                                <>
-                                                    {isCorrect && <Check className="h-5 w-5 text-green-700" />}
-                                                    {!isCorrect && isSelected && <X className="h-5 w-5 text-red-700" />}
-                                                </>
-                                            )}
                                         </div>
                                     )
                                 })}
@@ -202,6 +287,12 @@ export function QuizView({ documentContent }: QuizViewProps) {
                         </CardContent>
                     </Card>
                 ))}
+
+                {quizState === "in_progress" && (
+                    <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
+                        Submit Quiz
+                    </Button>
+                )}
              </div>
           )}
         </ScrollArea>

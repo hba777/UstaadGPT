@@ -1,3 +1,4 @@
+
 // lib/firestore.ts
 import { 
     doc, 
@@ -14,12 +15,19 @@ import {
     Timestamp
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
+
+  export interface QuizQuestion {
+    questionText: string;
+    options: string[];
+    correctAnswerIndex: number;
+  }
   
   export interface Book {
     id?: string
     userId: string
     title: string
     flashcards: Flashcard[]
+    quiz?: QuizQuestion[]
     createdAt: any
     updatedAt: any
     documentContent?: string 
@@ -36,6 +44,14 @@ import {
     bookTitle: string
     flashcards: Flashcard[]
     documentContent?: string
+  }
+
+  export interface SaveQuizParams {
+    userId: string;
+    bookId?: string;
+    bookTitle: string;
+    quiz: QuizQuestion[];
+    documentContent?: string;
   }
   
   // Save or update flashcards for a book
@@ -65,13 +81,56 @@ import {
         const booksCollection = collection(db, 'books')
         const docRef = await addDoc(booksCollection, {
             ...bookData,
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            flashcards: bookData.flashcards,
         })
         return docRef.id
       }
     } catch (error) {
       console.error('Error saving flashcards:', error)
       throw new Error('Failed to save flashcards')
+    }
+  }
+
+  export async function saveQuizToFirestore({
+    userId,
+    bookId,
+    bookTitle,
+    quiz,
+    documentContent,
+  }: SaveQuizParams): Promise<string> {
+    try {
+      const bookData: Partial<Book> & {
+        userId: string;
+        title: string;
+        quiz: QuizQuestion[];
+        updatedAt: any;
+      } = {
+        userId,
+        title: bookTitle,
+        quiz,
+        documentContent,
+        updatedAt: serverTimestamp(),
+      };
+  
+      if (bookId) {
+        // Update existing book
+        const bookRef = doc(db, "books", bookId);
+        await updateDoc(bookRef, bookData);
+        return bookId;
+      } else {
+        // Create new book
+        const booksCollection = collection(db, "books");
+        const docRef = await addDoc(booksCollection, {
+          ...bookData,
+          createdAt: serverTimestamp(),
+          flashcards: [], // Initialize with empty flashcards
+        });
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error("Error saving quiz:", error);
+      throw new Error("Failed to save quiz");
     }
   }
   
