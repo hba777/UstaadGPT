@@ -1,3 +1,4 @@
+
 import {
     Tabs,
     TabsContent,
@@ -13,9 +14,10 @@ import {
   interface AIToolsProps {
     documentContent: string;
     book?: Book | null;
+    onBookUpdate: (book: Book) => void;
   }
   
-  export function AITools({ documentContent, book }: AIToolsProps) {
+  export function AITools({ documentContent, book, onBookUpdate }: AIToolsProps) {
     return (
       <Tabs defaultValue="summary" className="h-full flex flex-col">
         <TabsList className="grid w-full grid-cols-4">
@@ -31,12 +33,14 @@ import {
           <QuizView 
             documentContent={documentContent} 
             book={book}
+            onBookUpdate={onBookUpdate}
           />
         </TabsContent>
         <TabsContent value="flashcards" className="flex-grow overflow-auto">
           <FlashcardView 
             documentContent={documentContent} 
             book={book}
+            onBookUpdate={onBookUpdate}
           />
         </TabsContent>
         <TabsContent value="chat" className="flex-grow overflow-auto">

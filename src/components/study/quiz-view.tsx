@@ -24,10 +24,12 @@ type QuizState = "not_started" | "in_progress" | "submitted"
 interface QuizViewProps {
     documentContent: string;
     book?: Book | null;
+    onBookUpdate: (book: Book) => void;
 }
 
-export function QuizView({ documentContent, book }: QuizViewProps) {
-  const [activeQuiz, setActiveQuiz] = useState<QuizQuestion[]>(book?.quiz || []);
+export function QuizView({ documentContent, book: initialBook, onBookUpdate }: QuizViewProps) {
+  const [book, setBook] = useState(initialBook);
+  const [activeQuiz, setActiveQuiz] = useState<QuizQuestion[]>(initialBook?.quiz || []);
   const [generatedQuiz, setGeneratedQuiz] = useState<QuizQuestion[] | null>(null);
   
   const quizToDisplay = generatedQuiz ?? activeQuiz;
@@ -37,9 +39,9 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
   const [score, setScore] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSaved, setIsSaved] = useState(!!book?.id && !!book?.quiz)
-  const [currentBookId, setCurrentBookId] = useState(book?.id)
-  const [bookTitle, setBookTitle] = useState(book?.title || "")
+  const [justSaved, setJustSaved] = useState(false);
+  const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
+  const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false)
 
   const { toast } = useToast()
@@ -47,18 +49,19 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
   const router = useRouter()
 
   useEffect(() => {
-    if (book) {
-      const savedQuiz = book.quiz || [];
+    setBook(initialBook);
+    if (initialBook) {
+      const savedQuiz = initialBook.quiz || [];
       setActiveQuiz(savedQuiz);
       setGeneratedQuiz(null);
-      setBookTitle(book.title);
-      setCurrentBookId(book.id);
+      setBookTitle(initialBook.title);
+      setCurrentBookId(initialBook.id);
       setUserAnswers({});
       setScore(0);
       setQuizState(savedQuiz.length > 0 ? "in_progress" : "not_started");
-      setIsSaved(!!book.id && savedQuiz.length > 0);
+      setJustSaved(false);
     }
-  }, [book]);
+  }, [initialBook]);
 
 
   const handleGenerateQuiz = async () => {
@@ -66,7 +69,7 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
     setGeneratedQuiz(null);
     setUserAnswers({})
     setScore(0)
-    setIsSaved(false)
+    setJustSaved(false);
 
     try {
       const result = await generateQuiz({ documentText: documentContent })
@@ -136,7 +139,7 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
 
     setIsSaving(true);
     try {
-        const newBookId = await saveBook({
+        const updatedBook = await saveBook({
             userId: user.uid,
             bookId: currentBookId,
             bookTitle: bookTitle.trim(),
@@ -145,18 +148,17 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
             saveNewQuizSet: true
         });
 
+        onBookUpdate(updatedBook);
+
         if (!currentBookId) {
-            setCurrentBookId(newBookId);
-            router.replace(`/my-books/${newBookId}`, { scroll: false })
+            router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
-        setActiveQuiz(quizToDisplay); 
         setGeneratedQuiz(null);
-        setIsSaved(true);
+        setJustSaved(true);
         toast({
             title: "Quiz Saved!",
             description: `A new quiz set has been saved to "${bookTitle}".`,
-            action: <Button variant="outline" size="sm" onClick={() => router.push(`/my-books/${newBookId}`)}>View Book</Button>
         });
     } catch (error) {
         console.error("Error saving quiz:", error);
@@ -170,7 +172,7 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
     setActiveQuiz(set.questions);
     setGeneratedQuiz(null);
     handleRetake();
-    setIsSaved(true);
+    setJustSaved(false);
     setIsSavedSetsOpen(false);
     toast({
         title: "Quiz Set Loaded",
@@ -179,6 +181,8 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
   }
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
+  const isSaveButtonDisabled = isSaving || justSaved || quizToDisplay.length === 0 || !bookTitle.trim();
+
 
   return (
     <>
@@ -196,7 +200,7 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
                 value={bookTitle}
                 onChange={e => {
                     setBookTitle(e.target.value)
-                    setIsSaved(false)
+                    setJustSaved(false);
                 }}
             />
         </div>
@@ -214,17 +218,17 @@ export function QuizView({ documentContent, book }: QuizViewProps) {
         {quizToDisplay.length > 0 && (
             <Button
                 onClick={handleSaveQuiz}
-                disabled={isSaving || !bookTitle.trim()}
-                variant={isSaved && !generatedQuiz ? "secondary" : "default"}
+                disabled={isSaveButtonDisabled}
+                variant={justSaved ? "secondary" : "default"}
                 className="flex-1"
             >
-                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
-                Save as New Set
+                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : justSaved ? <Check className="mr-2"/> : <Save className="mr-2" />}
+                {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
 
          {book && (
-            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
+            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
                 <History className="mr-2 h-4 w-4" />
                 View Saved
             </Button>

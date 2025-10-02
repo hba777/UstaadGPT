@@ -19,22 +19,28 @@ export default function BookDetailPage() {
   const [book, setBook] = useState<Book | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const fetchBook = async (id: string, uid: string) => {
+    setIsLoading(true)
+    try {
+      const fetchedBook = await getBookById(id, uid)
+      setBook(fetchedBook)
+    } catch (error) {
+      console.error("Failed to fetch book", error)
+      setBook(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (user?.uid && bookId) {
-      const fetchBook = async () => {
-        setIsLoading(true)
-        try {
-          const fetchedBook = await getBookById(bookId, user.uid)
-          setBook(fetchedBook)
-        } catch (error) {
-          console.error("Failed to fetch book", error)
-        } finally {
-          setIsLoading(false)
-        }
-      }
-      fetchBook()
+      fetchBook(bookId, user.uid)
     }
   }, [user?.uid, bookId])
+
+  const handleBookUpdate = (updatedBook: Book) => {
+    setBook(updatedBook);
+  }
   
   const handleBackToBooks = () => {
     router.push('/my-books')
@@ -85,7 +91,11 @@ export default function BookDetailPage() {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
             <div className="p-6 h-full">
-                <AITools documentContent={book.documentContent || ""} book={book} />
+                <AITools 
+                  documentContent={book.documentContent || ""} 
+                  book={book} 
+                  onBookUpdate={handleBookUpdate}
+                />
             </div>
         </ResizablePanel>
        </ResizablePanelGroup>

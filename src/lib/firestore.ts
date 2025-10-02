@@ -1,3 +1,4 @@
+
 // lib/firestore.ts
 import { 
     doc, 
@@ -74,7 +75,7 @@ import {
     quiz,
     saveNewFlashcardSet,
     saveNewQuizSet,
-  }: SaveBookParams): Promise<string> {
+  }: SaveBookParams): Promise<Book> {
     try {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
@@ -114,7 +115,6 @@ import {
           }
         }
         await updateDoc(bookRef, updatePayload);
-        return bookId!;
       } else {
         // Create new book
         bookData.createdAt = serverTimestamp();
@@ -122,9 +122,15 @@ import {
         bookData.quiz = quiz || [];
         bookData.savedFlashcards = flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [];
         bookData.savedQuizzes = quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [];
-        await setDoc(bookRef, bookData);
-        return bookRef.id;
+        await setDoc(bookRef, bookData, { merge: true });
       }
+
+      const savedDoc = await getDoc(bookRef);
+      if (!savedDoc.exists()) {
+        throw new Error("Failed to retrieve saved book");
+      }
+      return { id: savedDoc.id, ...savedDoc.data() } as Book;
+
     } catch (error) {
       console.error('Error saving book:', error);
       throw new Error('Failed to save book');
@@ -137,7 +143,7 @@ import {
     bookTitle,
     flashcards,
     documentContent
-  }: SaveBookParams): Promise<string> {
+  }: SaveBookParams): Promise<Book> {
     return saveBook({ userId, bookId, bookTitle, flashcards, documentContent, saveNewFlashcardSet: true });
   }
 
@@ -147,7 +153,7 @@ import {
     bookTitle,
     quiz,
     documentContent,
-  }: SaveBookParams): Promise<string> {
+  }: SaveBookParams): Promise<Book> {
     return saveBook({ userId, bookId, bookTitle, quiz, documentContent, saveNewQuizSet: true });
   }
   
