@@ -181,7 +181,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
-  const isSaveButtonDisabled = isSaving || justSaved || quizToDisplay.length === 0 || !bookTitle.trim();
+  // A quiz is considered "new" and saveable if it has been generated but not yet saved.
+  const isNewUnsavedContent = !!generatedQuiz;
+  const isSaveButtonDisabled = isSaving || !isNewUnsavedContent || quizToDisplay.length === 0 || !bookTitle.trim();
 
 
   return (
@@ -219,11 +221,11 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             <Button
                 onClick={handleSaveQuiz}
                 disabled={isSaveButtonDisabled}
-                variant={justSaved ? "secondary" : "default"}
+                variant={isNewUnsavedContent ? "default" : "secondary"}
                 className="flex-1"
             >
-                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : justSaved ? <Check className="mr-2"/> : <Save className="mr-2" />}
-                {justSaved ? "Saved" : "Save as New Set"}
+                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                {isNewUnsavedContent ? "Save as New Set" : "Saved"}
             </Button>
         )}
 

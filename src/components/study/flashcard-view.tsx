@@ -35,7 +35,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [justSaved, setJustSaved] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false);
@@ -51,7 +50,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       setBookTitle(initialBook.title);
       setCurrentBookId(initialBook.id);
       setGeneratedFlashcards(null);
-      setJustSaved(false);
     }
   }, [initialBook]);
 
@@ -60,12 +58,11 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
     setGeneratedFlashcards(null)
-    setJustSaved(false);
     
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
       setGeneratedFlashcards(result.flashcards)
-      setActiveFlashcards(result.flashcards)
+      // Do not set active flashcards here, only when saving.
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast({
@@ -96,12 +93,14 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       })
       return
     }
+    
+    const cardsToSave = generatedFlashcards;
 
-    if (flashcardsToDisplay.length === 0) {
+    if (!cardsToSave || cardsToSave.length === 0) {
       toast({
         variant: "destructive",
-        title: "No Flashcards",
-        description: "Generate or add flashcards before saving.",
+        title: "No New Flashcards",
+        description: "Generate new flashcards before saving.",
       })
       return
     }
@@ -113,7 +112,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
         userId: user.uid,
         bookId: currentBookId,
         bookTitle: bookTitle.trim(),
-        flashcards: flashcardsToDisplay,
+        flashcards: cardsToSave,
         documentContent: documentContent,
         saveNewFlashcardSet: true,
       })
@@ -125,11 +124,11 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
         router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
       }
       
-      setGeneratedFlashcards(null); // Clear generated state
-      setJustSaved(true);
+      setActiveFlashcards(cardsToSave);
+      setGeneratedFlashcards(null); // Clear generated state, this also disables the save button
       toast({
         title: "Success",
-        description: `Book "${bookTitle}" has been saved.`,
+        description: `New flashcard set saved to "${bookTitle}".`,
       })
     } catch (error) {
       console.error("Error saving flashcards:", error)
@@ -146,15 +145,15 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   const handleLoadSet = (set: SavedFlashcardSet) => {
     setActiveFlashcards(set.cards);
     setGeneratedFlashcards(null);
-    setJustSaved(false);
     setIsSavedSetsOpen(false);
     toast({
         title: "Flashcard Set Loaded",
         description: `Loaded set from ${new Date(set.createdAt.seconds * 1000).toLocaleString()}.`
     })
   }
-
-  const isSaveButtonDisabled = isSaving || justSaved || flashcardsToDisplay.length === 0 || !bookTitle.trim();
+  
+  const isNewUnsavedContent = !!generatedFlashcards;
+  const isSaveButtonDisabled = isSaving || !isNewUnsavedContent || !bookTitle.trim();
 
   return (
     <>
@@ -171,10 +170,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
                   id="book-title"
                   placeholder="Enter book title..."
                   value={bookTitle}
-                  onChange={(e) => {
-                      setBookTitle(e.target.value)
-                      setJustSaved(false);
-                  }}
+                  onChange={(e) => setBookTitle(e.target.value)}
                   className="mt-1"
                 />
               </div>
@@ -193,17 +189,15 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
             <Button 
               onClick={handleSaveFlashcards} 
               disabled={isSaveButtonDisabled}
-              variant={justSaved ? "secondary" : "default"}
+              variant={isNewUnsavedContent ? "default" : "secondary"}
               className="flex-1"
             >
               {isSaving ? (
                 <LoaderCircle className="mr-2 animate-spin" />
-              ) : justSaved ? (
-                <Check className="mr-2" />
               ) : (
                 <Save className="mr-2" />
               )}
-              {justSaved ? "Saved" : "Save as New Set"}
+              {isNewUnsavedContent ? "Save as New Set" : "Saved"}
             </Button>
 
             {book && (
