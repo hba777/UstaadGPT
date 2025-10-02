@@ -83,7 +83,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         return
       }
       setGeneratedQuiz(result.quiz)
-      setActiveQuiz(result.quiz);
+      setActiveQuiz([]); // Clear active quiz to ensure only generated one shows
       setQuizState("in_progress")
     } catch (error) {
       console.error("Error generating quiz:", error)
@@ -155,6 +155,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         }
         
         setGeneratedQuiz(null);
+        setActiveQuiz(updatedBook.quiz || [])
         setJustSaved(true);
         toast({
             title: "Quiz Saved!",
@@ -183,7 +184,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   // A quiz is considered "new" and saveable if it has been generated but not yet saved.
   const isNewUnsavedContent = !!generatedQuiz;
-  const isSaveButtonDisabled = isSaving || !isNewUnsavedContent || quizToDisplay.length === 0 || !bookTitle.trim();
+  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || quizToDisplay.length === 0 || !bookTitle.trim();
 
 
   return (
@@ -225,7 +226,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 className="flex-1"
             >
                 {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
-                {isNewUnsavedContent ? "Save as New Set" : "Saved"}
+                {isNewUnsavedContent && !justSaved ? "Save as New Set" : "Saved"}
             </Button>
         )}
 
@@ -239,7 +240,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4">
-          {isLoading && (
+          {isLoading ? (
             <div className="space-y-6 p-2">
                 {[...Array(3)].map((_, i) => (
                     <div key={i} className="space-y-3">
@@ -252,17 +253,13 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                     </div>
                 ))}
             </div>
-          )}
-
-          {quizState === "not_started" && !isLoading && (
+          ) : quizState === "not_started" ? (
             <div className="text-center text-muted-foreground h-full flex flex-col items-center justify-center">
               <Lightbulb className="mx-auto h-12 w-12" />
               <p className="mt-2 font-semibold">Ready to test your knowledge?</p>
               <p className="text-sm">Click the button above to generate a quiz.</p>
             </div>
-          )}
-
-          {(quizState === "in_progress" || quizState === "submitted") && quizToDisplay.length > 0 && (
+          ) : (quizState === "in_progress" || quizState === "submitted") && quizToDisplay.length > 0 ? (
              <div className="space-y-6">
                 {quizState === "submitted" && (
                     <Card className="text-center bg-primary/10 border-primary/50">
@@ -339,7 +336,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                     </Button>
                 )}
              </div>
-          )}
+          ) : null}
         </ScrollArea>
       </div>
     </div>

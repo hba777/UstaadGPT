@@ -83,13 +83,13 @@ export default function BookDetailPage() {
             </div>
         </div>
        <ResizablePanelGroup direction="horizontal" className="flex-grow rounded-lg border">
-        <ResizablePanel defaultSize={50} className="min-w-0">
+        <ResizablePanel defaultSize={50} minSize={30}>
             <div className="p-6 h-full min-w-0">
                 <DocumentView content={book.documentContent || "No document content available."} />
             </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50} className="min-w-0">
+        <ResizablePanel defaultSize={50} minSize={30}>
             <div className="p-6 h-full">
                 <AITools 
                   documentContent={book.documentContent || ""} 

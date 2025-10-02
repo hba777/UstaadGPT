@@ -35,6 +35,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false);
@@ -47,9 +48,10 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     setBook(initialBook);
     if (initialBook) {
       setActiveFlashcards(initialBook.flashcards || []);
+      setGeneratedFlashcards(null);
       setBookTitle(initialBook.title);
       setCurrentBookId(initialBook.id);
-      setGeneratedFlashcards(null);
+      setJustSaved(false);
     }
   }, [initialBook]);
 
@@ -58,6 +60,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
     setGeneratedFlashcards(null)
+    setJustSaved(false);
     
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
@@ -125,7 +128,8 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       }
       
       setActiveFlashcards(cardsToSave);
-      setGeneratedFlashcards(null); // Clear generated state, this also disables the save button
+      setGeneratedFlashcards(null); // Clear generated state
+      setJustSaved(true);
       toast({
         title: "Success",
         description: `New flashcard set saved to "${bookTitle}".`,
@@ -145,6 +149,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   const handleLoadSet = (set: SavedFlashcardSet) => {
     setActiveFlashcards(set.cards);
     setGeneratedFlashcards(null);
+    setJustSaved(false);
     setIsSavedSetsOpen(false);
     toast({
         title: "Flashcard Set Loaded",
@@ -153,7 +158,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   }
   
   const isNewUnsavedContent = !!generatedFlashcards;
-  const isSaveButtonDisabled = isSaving || !isNewUnsavedContent || !bookTitle.trim();
+  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
 
   return (
     <>
@@ -170,7 +175,10 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
                   id="book-title"
                   placeholder="Enter book title..."
                   value={bookTitle}
-                  onChange={(e) => setBookTitle(e.target.value)}
+                  onChange={(e) => {
+                    setBookTitle(e.target.value)
+                    setJustSaved(false)
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -197,7 +205,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
               ) : (
                 <Save className="mr-2" />
               )}
-              {isNewUnsavedContent ? "Save as New Set" : "Saved"}
+              {isNewUnsavedContent && !justSaved ? "Save as New Set" : "Saved"}
             </Button>
 
             {book && (
