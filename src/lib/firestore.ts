@@ -121,8 +121,8 @@ import {
         bookData.createdAt = serverTimestamp();
         bookData.flashcards = flashcards || [];
         bookData.quiz = quiz || [];
-        bookData.savedFlashcards = flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [];
-        bookData.savedQuizzes = quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [];
+        bookData.savedFlashcards = [];
+        bookData.savedQuizzes = [];
         await setDoc(bookRef, bookData, { merge: true });
       }
 
