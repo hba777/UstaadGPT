@@ -16,7 +16,7 @@ interface SavedFlashcardsDialogProps {
     onClose: () => void
     book: Book | null | undefined
     onLoadSet: (set: SavedFlashcardSet) => void
-    onBookUpdate: (book: Book) => void;
+    onBookUpdate: (book: Book, deletedSetId?: string) => void;
 }
 
 export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBookUpdate }: SavedFlashcardsDialogProps) {
@@ -37,10 +37,18 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
         }
         setDeletingId(set.id);
         try {
-            await deleteSavedFlashcardSet(book.id, set);
+            // Find the original set object from the book to pass to arrayRemove
+            const originalSet = book.savedFlashcards?.find(s => s.id === set.id);
+            if (!originalSet) {
+                 toast({ variant: "destructive", title: "Error", description: "Could not find set to delete." });
+                 setDeletingId(null);
+                 return;
+            }
+
+            await deleteSavedFlashcardSet(book.id, originalSet);
             const updatedBook = await getBookById(book.id, user.uid);
             if (updatedBook) {
-                onBookUpdate(updatedBook);
+                onBookUpdate(updatedBook, set.id);
             }
             toast({ title: "Success", description: "Flashcard set deleted." });
         } catch (error) {
@@ -86,7 +94,7 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button size="icon" variant="destructive_outline" disabled={deletingId === set.id}>
+                                                            <Button size="icon" variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={deletingId === set.id}>
                                                                 {deletingId === set.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                             </Button>
                                                         </AlertDialogTrigger>

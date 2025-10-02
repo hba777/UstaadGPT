@@ -30,7 +30,7 @@ interface FlashcardViewProps {
 
 export function FlashcardView({ documentContent, book: initialBook, onBookUpdate }: FlashcardViewProps) {
   const [book, setBook] = useState(initialBook);
-  const [activeFlashcards, setActiveFlashcards] = useState<FlashcardType[]>(initialBook?.flashcards || []);
+  const [activeFlashcardSet, setActiveFlashcardSet] = useState<SavedFlashcardSet | null>(null);
   const [generatedFlashcards, setGeneratedFlashcards] = useState<FlashcardType[] | null>(null);
 
   const [isLoading, setIsLoading] = useState(false)
@@ -47,25 +47,26 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   useEffect(() => {
     setBook(initialBook);
     if (initialBook) {
-      setActiveFlashcards(initialBook.flashcards || []);
+      const latestSet = initialBook.savedFlashcards?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+      setActiveFlashcardSet(latestSet || null);
       setGeneratedFlashcards(null);
       setBookTitle(initialBook.title);
       setCurrentBookId(initialBook.id);
       setJustSaved(false);
     }
   }, [initialBook]);
-
-  const flashcardsToDisplay = generatedFlashcards ?? activeFlashcards;
+  
+  const flashcardsToDisplay = generatedFlashcards ?? activeFlashcardSet?.cards ?? [];
 
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
     setGeneratedFlashcards(null)
+    setActiveFlashcardSet(null);
     setJustSaved(false);
     
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
       setGeneratedFlashcards(result.flashcards)
-      setActiveFlashcards([]);
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast({
@@ -126,9 +127,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
         router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
       }
       
-      setBook(updatedBook);
-      setActiveFlashcards(cardsToSave);
-      setGeneratedFlashcards(null);
       setJustSaved(true);
       toast({
         title: "Success",
@@ -147,7 +145,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   }
   
   const handleLoadSet = (set: SavedFlashcardSet) => {
-    setActiveFlashcards(set.cards);
+    setActiveFlashcardSet(set);
     setGeneratedFlashcards(null);
     setJustSaved(false);
     setIsSavedSetsOpen(false);
@@ -157,9 +155,13 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     })
   }
 
-  const handleBookUpdateFromDialog = (updatedBook: Book) => {
+  const handleBookUpdateFromDialog = (updatedBook: Book, deletedSetId?: string) => {
     onBookUpdate(updatedBook);
-    setBook(updatedBook);
+    // If the deleted set was the one being viewed, update the view
+    if (activeFlashcardSet && activeFlashcardSet.id === deletedSetId) {
+       const latestSet = updatedBook.savedFlashcards?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+       setActiveFlashcardSet(latestSet || null);
+    }
   }
   
   const isNewUnsavedContent = !!generatedFlashcards;
@@ -196,22 +198,24 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
               ) : (
                 <BookCopy className="mr-2" />
               )}
-              {activeFlashcards.length > 0 || generatedFlashcards ? "Generate New" : "Generate Flashcards"}
+              {activeFlashcardSet || generatedFlashcards ? "Generate New" : "Generate Flashcards"}
             </Button>
             
-            <Button 
-              onClick={handleSaveFlashcards} 
-              disabled={isSaveButtonDisabled}
-              variant={isNewUnsavedContent ? "default" : "secondary"}
-              className="flex-1"
-            >
-              {isSaving ? (
-                <LoaderCircle className="mr-2 animate-spin" />
-              ) : (
-                <Save className="mr-2" />
-              )}
-              {isNewUnsavedContent && !justSaved ? "Save as New Set" : "Saved"}
-            </Button>
+            {isNewUnsavedContent && (
+              <Button 
+                onClick={handleSaveFlashcards} 
+                disabled={isSaveButtonDisabled}
+                variant={"default"}
+                className="flex-1"
+              >
+                {isSaving ? (
+                  <LoaderCircle className="mr-2 animate-spin" />
+                ) : (
+                  <Save className="mr-2" />
+                )}
+                {justSaved ? "Saved" : "Save as New Set"}
+              </Button>
+            )}
 
             {book && (
                 <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedFlashcards || book.savedFlashcards.length === 0}>

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { saveBook, type QuizQuestion, type Book, SavedQuizSet } from "@/lib/firestore"
+import { saveBook, type QuizQuestion, type Book, type SavedQuizSet } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -29,12 +29,12 @@ interface QuizViewProps {
 
 export function QuizView({ documentContent, book: initialBook, onBookUpdate }: QuizViewProps) {
   const [book, setBook] = useState(initialBook);
-  const [activeQuiz, setActiveQuiz] = useState<QuizQuestion[]>(initialBook?.quiz || []);
+  const [activeQuizSet, setActiveQuizSet] = useState<SavedQuizSet | null>(null);
   const [generatedQuiz, setGeneratedQuiz] = useState<QuizQuestion[] | null>(null);
   
-  const quizToDisplay = generatedQuiz ?? activeQuiz;
+  const quizToDisplay = generatedQuiz ?? activeQuizSet?.questions ?? [];
 
-  const [quizState, setQuizState] = useState<QuizState>(activeQuiz && activeQuiz.length > 0 ? "in_progress" : "not_started")
+  const [quizState, setQuizState] = useState<QuizState>("not_started");
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({})
   const [score, setScore] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -51,23 +51,23 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   useEffect(() => {
     setBook(initialBook);
     if (initialBook) {
-      const savedQuiz = initialBook.quiz || [];
-      setActiveQuiz(savedQuiz);
+      const latestSet = initialBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+      setActiveQuizSet(latestSet || null);
       setGeneratedQuiz(null);
       setBookTitle(initialBook.title);
       setCurrentBookId(initialBook.id);
+      
       setUserAnswers({});
       setScore(0);
-      setQuizState(savedQuiz.length > 0 ? "in_progress" : "not_started");
+      setQuizState(latestSet ? "in_progress" : "not_started");
       setJustSaved(false);
     }
   }, [initialBook]);
 
-
   const handleGenerateQuiz = async () => {
     setIsLoading(true)
     setGeneratedQuiz(null);
-    setActiveQuiz([]);
+    setActiveQuizSet(null);
     setUserAnswers({})
     setScore(0)
     setJustSaved(false);
@@ -80,8 +80,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           title: "Quiz Generation Failed",
           description: "The AI couldn't generate a quiz from this document. Please try a different document.",
         })
-        setQuizState(initialBook?.quiz && initialBook.quiz.length > 0 ? "in_progress" : "not_started");
-        setActiveQuiz(initialBook?.quiz || []);
+        const latestSet = book?.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+        setQuizState(latestSet ? "in_progress" : "not_started");
+        setActiveQuizSet(latestSet || null);
         return
       }
       setGeneratedQuiz(result.quiz)
@@ -93,8 +94,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         title: "Error",
         description: "Failed to generate quiz. Please try again.",
       })
-       setQuizState(initialBook?.quiz && initialBook.quiz.length > 0 ? "in_progress" : "not_started");
-       setActiveQuiz(initialBook?.quiz || []);
+       const latestSet = book?.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+       setQuizState(latestSet ? "in_progress" : "not_started");
+       setActiveQuizSet(latestSet || null);
     } finally {
         setIsLoading(false)
     }
@@ -156,9 +158,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
-        setBook(updatedBook);
-        setActiveQuiz(updatedBook.quiz || [])
-        setGeneratedQuiz(null);
         setJustSaved(true);
         toast({
             title: "Quiz Saved!",
@@ -173,7 +172,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   };
 
   const handleLoadSet = (set: SavedQuizSet) => {
-    setActiveQuiz(set.questions);
+    setActiveQuizSet(set);
     setGeneratedQuiz(null);
     handleRetake();
     setJustSaved(false);
@@ -184,9 +183,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     })
   }
 
-  const handleBookUpdateFromDialog = (updatedBook: Book) => {
+  const handleBookUpdateFromDialog = (updatedBook: Book, deletedSetId?: string) => {
     onBookUpdate(updatedBook);
-    setBook(updatedBook);
+    // If the deleted set was the one being viewed, update the view
+    if (activeQuizSet && activeQuizSet.id === deletedSetId) {
+       const latestSet = updatedBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+       setActiveQuizSet(latestSet || null);
+       setQuizState(latestSet ? 'in_progress' : 'not_started');
+    }
   }
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
@@ -222,18 +226,18 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           ) : (
             <Lightbulb className="mr-2" />
           )}
-          {activeQuiz.length > 0 || generatedQuiz ? "Generate New Quiz" : "Generate Quiz"}
+          {activeQuizSet || generatedQuiz ? "Generate New Quiz" : "Generate Quiz"}
         </Button>
 
-        {quizToDisplay.length > 0 && (
+        {isNewUnsavedContent && (
             <Button
                 onClick={handleSaveQuiz}
                 disabled={isSaveButtonDisabled}
-                variant={isNewUnsavedContent ? "default" : "secondary"}
+                variant={"default"}
                 className="flex-1"
             >
                 {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
-                {isNewUnsavedContent && !justSaved ? "Save as New Set" : "Saved"}
+                {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
 
