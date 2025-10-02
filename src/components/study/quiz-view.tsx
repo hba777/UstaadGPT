@@ -16,6 +16,10 @@ import { cn } from "@/lib/utils"
 type QuizState = "not_started" | "loading" | "in_progress" | "submitted"
 type QuizQuestion = GenerateQuizOutput["quiz"][0]
 
+interface QuizViewProps {
+    documentContent: string
+}
+
 export function QuizView({ documentContent }: QuizViewProps) {
   const [quiz, setQuiz] = useState<QuizQuestion[]>([])
   const [quizState, setQuizState] = useState<QuizState>("not_started")
@@ -87,6 +91,10 @@ export function QuizView({ documentContent }: QuizViewProps) {
 
   return (
     <div className="flex flex-col gap-4 h-full">
+       <div className="flex items-center gap-2 text-lg font-semibold">
+        <Lightbulb />
+        Quiz Generator
+       </div>
       <div className="flex gap-2">
         <Button onClick={handleGenerateQuiz} disabled={quizState === "loading"} className="flex-1">
           {quizState === "loading" ? (
@@ -109,7 +117,7 @@ export function QuizView({ documentContent }: QuizViewProps) {
             </Button>
         )}
       </div>
-      <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+      <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden">
         <ScrollArea className="h-full pr-4">
           {quizState === "loading" && (
             <div className="space-y-6 p-2">
@@ -127,7 +135,7 @@ export function QuizView({ documentContent }: QuizViewProps) {
           )}
 
           {quizState === "not_started" && (
-            <div className="text-center text-muted-foreground pt-16">
+            <div className="text-center text-muted-foreground h-full flex flex-col items-center justify-center">
               <Lightbulb className="mx-auto h-12 w-12" />
               <p className="mt-2 font-semibold">Ready to test your knowledge?</p>
               <p className="text-sm">Click the button above to generate a quiz.</p>
@@ -200,8 +208,4 @@ export function QuizView({ documentContent }: QuizViewProps) {
       </div>
     </div>
   )
-}
-
-interface QuizViewProps {
-  documentContent: string
 }
