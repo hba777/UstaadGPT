@@ -1,6 +1,6 @@
 
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BookCopy, LoaderCircle, Save, Check } from "lucide-react"
 import type { GenerateFlashcardsOutput } from "@/ai/flows/generate-flashcards"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
@@ -17,35 +17,48 @@ import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Flashcard } from "./flashcard"
-import { saveBook } from "@/lib/firestore"
+import { saveBook, type Book } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext" 
 import { useRouter } from "next/navigation"
 
 interface FlashcardViewProps {
   documentContent: string
-  bookId?: string // Optional: if editing existing book
-  bookName?: string // Optional: if editing existing book
+  book?: Book | null; 
 }
 
-export function FlashcardView({ documentContent, bookId, bookName }: FlashcardViewProps) {
-  const [flashcards, setFlashcards] = useState<GenerateFlashcardsOutput["flashcards"]>([])
+export function FlashcardView({ documentContent, book }: FlashcardViewProps) {
+  const [initialFlashcards, setInitialFlashcards] = useState(book?.flashcards || []);
+  const [generatedFlashcards, setGeneratedFlashcards] = useState<GenerateFlashcardsOutput["flashcards"] | null>(null);
+
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSaved, setIsSaved] = useState(!!bookId)
-  const [currentBookId, setCurrentBookId] = useState(bookId)
-  const [bookTitle, setBookTitle] = useState(bookName || "")
+  const [isSaved, setIsSaved] = useState(!!book?.id)
+  const [currentBookId, setCurrentBookId] = useState(book?.id)
+  const [bookTitle, setBookTitle] = useState(book?.title || "")
   const { toast } = useToast()
   const { user } = useAuthContext()
   const router = useRouter()
 
+  useEffect(() => {
+    if (book) {
+      setInitialFlashcards(book.flashcards || []);
+      setBookTitle(book.title);
+      setCurrentBookId(book.id);
+      setIsSaved(!!book.id);
+      setGeneratedFlashcards(null); // Reset generated when book changes
+    }
+  }, [book]);
+
+  const flashcardsToDisplay = generatedFlashcards ?? initialFlashcards;
+
   const handleGenerateFlashcards = async () => {
     setIsLoading(true)
-    setFlashcards([])
+    setGeneratedFlashcards(null)
     setIsSaved(false)
     
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
-      setFlashcards(result.flashcards)
+      setGeneratedFlashcards(result.flashcards)
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast({
@@ -77,11 +90,12 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
       return
     }
 
-    if (flashcards.length === 0) {
+    const cardsToSave = generatedFlashcards || initialFlashcards;
+    if (cardsToSave.length === 0) {
       toast({
         variant: "destructive",
         title: "No Flashcards",
-        description: "Generate flashcards before saving.",
+        description: "Generate or add flashcards before saving.",
       })
       return
     }
@@ -93,11 +107,13 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
         userId: user.uid,
         bookId: currentBookId,
         bookTitle: bookTitle.trim(),
-        flashcards: flashcards,
+        flashcards: cardsToSave,
         documentContent: documentContent
       })
       
       setCurrentBookId(newBookId);
+      setInitialFlashcards(cardsToSave); // The new saved state
+      setGeneratedFlashcards(null); // Clear generated state
       setIsSaved(true)
       toast({
         title: "Success",
@@ -123,7 +139,7 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
         Flashcard Generator
        </div>
       <div className="flex flex-col gap-2">
-        {!bookId && (
+        {!book?.id && (
             <div>
               <Label htmlFor="book-title">Book Title</Label>
               <Input
@@ -146,23 +162,23 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
             ) : (
               <BookCopy className="mr-2" />
             )}
-            Generate Flashcards
+            {initialFlashcards.length > 0 ? "Generate New" : "Generate Flashcards"}
           </Button>
           
           <Button 
             onClick={handleSaveFlashcards} 
-            disabled={isSaving || flashcards.length === 0 || !bookTitle.trim()}
-            variant={isSaved ? "secondary" : "default"}
+            disabled={isSaving || flashcardsToDisplay.length === 0 || !bookTitle.trim()}
+            variant={isSaved && !generatedFlashcards ? "secondary" : "default"}
             className="flex-1"
           >
             {isSaving ? (
               <LoaderCircle className="mr-2 animate-spin" />
-            ) : isSaved ? (
+            ) : isSaved && !generatedFlashcards ? (
               <Check className="mr-2" />
             ) : (
               <Save className="mr-2" />
             )}
-            {isSaved ? "Saved" : "Save Book"}
+            {isSaved && !generatedFlashcards ? "Saved" : "Save Book"}
           </Button>
         </div>
       </div>
@@ -177,11 +193,11 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
           </div>
         )}
         
-        {flashcards.length > 0 && !isLoading && (
+        {flashcardsToDisplay.length > 0 && !isLoading && (
           <div className="w-full max-w-sm">
             <Carousel className="w-full">
               <CarouselContent>
-                {flashcards.map((card, index) => (
+                {flashcardsToDisplay.map((card, index) => (
                   <CarouselItem key={index}>
                     <Flashcard front={card.front} back={card.back} />
                   </CarouselItem>
@@ -191,12 +207,12 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
               <CarouselNext />
             </Carousel>
             <div className="mt-4 text-center text-sm text-muted-foreground">
-              {flashcards.length} flashcard{flashcards.length !== 1 ? 's' : ''} generated
+              {flashcardsToDisplay.length} flashcard{flashcardsToDisplay.length !== 1 ? 's' : ''} {generatedFlashcards ? 'generated' : 'saved'}
             </div>
           </div>
         )}
         
-        {!isLoading && flashcards.length === 0 && (
+        {!isLoading && flashcardsToDisplay.length === 0 && (
           <div className="text-center text-muted-foreground p-8">
             <BookCopy className="h-12 w-12 mx-auto mb-4" />
             <p className="font-semibold">Generate flashcards from your document</p>

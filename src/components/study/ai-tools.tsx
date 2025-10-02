@@ -16,10 +16,6 @@ import {
   }
   
   export function AITools({ documentContent, book }: AIToolsProps) {
-    const bookId = book?.id;
-    const bookName = book?.title;
-    const initialQuiz = book?.quiz;
-
     return (
       <Tabs defaultValue="summary" className="h-full flex flex-col">
         <TabsList className="grid w-full grid-cols-4">
@@ -34,16 +30,13 @@ import {
         <TabsContent value="quiz" className="flex-grow overflow-hidden">
           <QuizView 
             documentContent={documentContent} 
-            bookId={bookId} 
-            bookName={bookName}
-            initialQuiz={initialQuiz}
+            book={book}
           />
         </TabsContent>
         <TabsContent value="flashcards" className="flex-grow overflow-hidden">
           <FlashcardView 
             documentContent={documentContent} 
-            bookId={bookId} 
-            bookName={bookName} 
+            book={book}
           />
         </TabsContent>
         <TabsContent value="chat" className="flex-grow overflow-hidden">
