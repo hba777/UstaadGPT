@@ -235,7 +235,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         )}
       </div>
 
-      <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden">
+      <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4">
           {isLoading && (
             <div className="space-y-6 p-2">

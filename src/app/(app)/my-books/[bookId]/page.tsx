@@ -71,25 +71,25 @@ export default function BookDetailPage() {
   }
   
   return (
-    <div className="h-[calc(100vh-5rem)]">
+    <div className="h-[calc(100vh-5rem)] flex flex-col">
         <div className="flex items-center gap-4 p-4 border-b">
             <Button variant="outline" size="sm" onClick={handleBackToBooks}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <div className="flex items-center gap-2">
-                <BookIcon className="h-5 w-5" />
+            <div className="flex items-center gap-2 min-w-0">
+                <BookIcon className="h-5 w-5 flex-shrink-0" />
                 <h1 className="text-lg font-semibold truncate">{book.title}</h1>
             </div>
         </div>
-       <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
-        <ResizablePanel defaultSize={50}>
+       <ResizablePanelGroup direction="horizontal" className="flex-grow rounded-lg border">
+        <ResizablePanel defaultSize={50} className="min-w-0">
             <div className="p-6 h-full">
                 <DocumentView content={book.documentContent || "No document content available."} />
             </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50}>
+        <ResizablePanel defaultSize={50} className="min-w-0">
             <div className="p-6 h-full">
                 <AITools 
                   documentContent={book.documentContent || ""} 

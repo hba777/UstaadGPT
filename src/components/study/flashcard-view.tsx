@@ -215,7 +215,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
           </div>
         </div>
 
-        <div className="flex-grow flex items-center justify-center rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+        <div className="flex-grow flex items-center justify-center rounded-lg border bg-card text-card-foreground shadow-sm p-4 min-h-0">
           {isLoading && (
             <div className="w-full max-w-sm mx-auto">
               <Skeleton className="h-64 w-full" />
