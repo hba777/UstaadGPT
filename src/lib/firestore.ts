@@ -13,6 +13,7 @@ import {
     getDoc,
     Timestamp,
     setDoc,
+    arrayUnion
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
 
@@ -21,21 +22,35 @@ import {
     options: string[];
     correctAnswerIndex: number;
   }
+
+  export interface Flashcard {
+    front: string
+    back: string
+  }
+
+  export interface SavedQuizSet {
+    id: string;
+    createdAt: Timestamp;
+    questions: QuizQuestion[];
+  }
+
+  export interface SavedFlashcardSet {
+    id: string;
+    createdAt: Timestamp;
+    cards: Flashcard[];
+  }
   
   export interface Book {
     id?: string
     userId: string
     title: string
-    flashcards: Flashcard[]
-    quiz?: QuizQuestion[]
+    flashcards: Flashcard[] // Represents the latest/active flashcards
+    quiz?: QuizQuestion[] // Represents the latest/active quiz
+    savedFlashcards?: SavedFlashcardSet[]
+    savedQuizzes?: SavedQuizSet[]
     createdAt: any
     updatedAt: any
     documentContent?: string 
-  }
-  
-  export interface Flashcard {
-    front: string
-    back: string
   }
   
   export interface SaveBookParams {
@@ -45,6 +60,8 @@ import {
     documentContent?: string;
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
+    saveNewQuizSet?: boolean;
+    saveNewFlashcardSet?: boolean;
   }
   
   // Save or update a book
@@ -55,33 +72,56 @@ import {
     documentContent,
     flashcards,
     quiz,
+    saveNewFlashcardSet,
+    saveNewQuizSet,
   }: SaveBookParams): Promise<string> {
     try {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
       
-      const bookData: Partial<Book> = {
+      const bookData: Partial<Book> & { updatedAt: any } = {
         userId,
         title: bookTitle,
         updatedAt: serverTimestamp(),
       };
   
-      // Only include fields if they are provided
       if (documentContent !== undefined) bookData.documentContent = documentContent;
-      if (flashcards !== undefined) bookData.flashcards = flashcards;
-      if (quiz !== undefined) bookData.quiz = quiz;
-  
+      
+      const updatePayload: any = {
+        title: bookTitle,
+        updatedAt: serverTimestamp(),
+      };
+
       if (isUpdating) {
-        // Update existing book
-        await updateDoc(bookRef, bookData);
+        if (flashcards) {
+          updatePayload.flashcards = flashcards;
+          if (saveNewFlashcardSet) {
+            updatePayload.savedFlashcards = arrayUnion({
+              id: crypto.randomUUID(),
+              createdAt: new Date(),
+              cards: flashcards,
+            });
+          }
+        }
+        if (quiz) {
+          updatePayload.quiz = quiz;
+           if (saveNewQuizSet) {
+            updatePayload.savedQuizzes = arrayUnion({
+              id: crypto.randomUUID(),
+              createdAt: new Date(),
+              questions: quiz,
+            });
+          }
+        }
+        await updateDoc(bookRef, updatePayload);
         return bookId!;
       } else {
         // Create new book
         bookData.createdAt = serverTimestamp();
-        // Ensure flashcards/quiz are at least empty arrays on creation
-        if (!bookData.flashcards) bookData.flashcards = [];
-        if (!bookData.quiz) bookData.quiz = [];
-
+        bookData.flashcards = flashcards || [];
+        bookData.quiz = quiz || [];
+        bookData.savedFlashcards = flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [];
+        bookData.savedQuizzes = quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [];
         await setDoc(bookRef, bookData);
         return bookRef.id;
       }
@@ -98,7 +138,7 @@ import {
     flashcards,
     documentContent
   }: SaveBookParams): Promise<string> {
-    return saveBook({ userId, bookId, bookTitle, flashcards, documentContent });
+    return saveBook({ userId, bookId, bookTitle, flashcards, documentContent, saveNewFlashcardSet: true });
   }
 
   export async function saveQuizToFirestore({
@@ -108,7 +148,7 @@ import {
     quiz,
     documentContent,
   }: SaveBookParams): Promise<string> {
-    return saveBook({ userId, bookId, bookTitle, quiz, documentContent });
+    return saveBook({ userId, bookId, bookTitle, quiz, documentContent, saveNewQuizSet: true });
   }
   
   // Get all books for a user

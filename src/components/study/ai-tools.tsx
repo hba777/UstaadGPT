@@ -24,22 +24,22 @@ import {
           <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
           <TabsTrigger value="chat">Chatbot</TabsTrigger>
         </TabsList>
-        <TabsContent value="summary" className="flex-grow overflow-hidden">
+        <TabsContent value="summary" className="flex-grow overflow-auto">
           <SummaryView documentContent={documentContent} />
         </TabsContent>
-        <TabsContent value="quiz" className="flex-grow overflow-hidden">
+        <TabsContent value="quiz" className="flex-grow overflow-auto">
           <QuizView 
             documentContent={documentContent} 
             book={book}
           />
         </TabsContent>
-        <TabsContent value="flashcards" className="flex-grow overflow-hidden">
+        <TabsContent value="flashcards" className="flex-grow overflow-auto">
           <FlashcardView 
             documentContent={documentContent} 
             book={book}
           />
         </TabsContent>
-        <TabsContent value="chat" className="flex-grow overflow-hidden">
+        <TabsContent value="chat" className="flex-grow overflow-auto">
           <ChatbotView documentContent={documentContent} />
         </TabsContent>
       </Tabs>
