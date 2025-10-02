@@ -14,7 +14,8 @@ import {
     getDoc,
     Timestamp,
     setDoc,
-    arrayUnion
+    arrayUnion,
+    arrayRemove
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
 
@@ -137,24 +138,30 @@ import {
     }
   }
 
-  export async function saveFlashcardsToFirestore({
-    userId,
-    bookId,
-    bookTitle,
-    flashcards,
-    documentContent
-  }: SaveBookParams): Promise<Book> {
-    return saveBook({ userId, bookId, bookTitle, flashcards, documentContent, saveNewFlashcardSet: true });
+  // Delete a saved quiz set from a book
+  export async function deleteSavedQuizSet(bookId: string, quizSet: SavedQuizSet): Promise<void> {
+    try {
+      const bookRef = doc(db, 'books', bookId);
+      await updateDoc(bookRef, {
+        savedQuizzes: arrayRemove(quizSet)
+      });
+    } catch (error) {
+      console.error('Error deleting saved quiz set:', error);
+      throw new Error('Failed to delete quiz set.');
+    }
   }
 
-  export async function saveQuizToFirestore({
-    userId,
-    bookId,
-    bookTitle,
-    quiz,
-    documentContent,
-  }: SaveBookParams): Promise<Book> {
-    return saveBook({ userId, bookId, bookTitle, quiz, documentContent, saveNewQuizSet: true });
+  // Delete a saved flashcard set from a book
+  export async function deleteSavedFlashcardSet(bookId: string, flashcardSet: SavedFlashcardSet): Promise<void> {
+    try {
+      const bookRef = doc(db, 'books', bookId);
+      await updateDoc(bookRef, {
+        savedFlashcards: arrayRemove(flashcardSet)
+      });
+    } catch (error) {
+      console.error('Error deleting saved flashcard set:', error);
+      throw new Error('Failed to delete flashcard set.');
+    }
   }
   
   // Get all books for a user

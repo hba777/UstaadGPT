@@ -67,6 +67,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const handleGenerateQuiz = async () => {
     setIsLoading(true)
     setGeneratedQuiz(null);
+    setActiveQuiz([]);
     setUserAnswers({})
     setScore(0)
     setJustSaved(false);
@@ -79,11 +80,11 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           title: "Quiz Generation Failed",
           description: "The AI couldn't generate a quiz from this document. Please try a different document.",
         })
-        setQuizState(activeQuiz.length > 0 ? "in_progress" : "not_started");
+        setQuizState(initialBook?.quiz && initialBook.quiz.length > 0 ? "in_progress" : "not_started");
+        setActiveQuiz(initialBook?.quiz || []);
         return
       }
       setGeneratedQuiz(result.quiz)
-      setActiveQuiz([]); // Clear active quiz to ensure only generated one shows
       setQuizState("in_progress")
     } catch (error) {
       console.error("Error generating quiz:", error)
@@ -92,7 +93,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         title: "Error",
         description: "Failed to generate quiz. Please try again.",
       })
-      setQuizState(activeQuiz.length > 0 ? "in_progress" : "not_started");
+       setQuizState(initialBook?.quiz && initialBook.quiz.length > 0 ? "in_progress" : "not_started");
+       setActiveQuiz(initialBook?.quiz || []);
     } finally {
         setIsLoading(false)
     }
@@ -154,8 +156,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
-        setGeneratedQuiz(null);
+        setBook(updatedBook);
         setActiveQuiz(updatedBook.quiz || [])
+        setGeneratedQuiz(null);
         setJustSaved(true);
         toast({
             title: "Quiz Saved!",
@@ -181,8 +184,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     })
   }
 
+  const handleBookUpdateFromDialog = (updatedBook: Book) => {
+    onBookUpdate(updatedBook);
+    setBook(updatedBook);
+  }
+
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
-  // A quiz is considered "new" and saveable if it has been generated but not yet saved.
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || quizToDisplay.length === 0 || !bookTitle.trim();
 
@@ -215,7 +222,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           ) : (
             <Lightbulb className="mr-2" />
           )}
-          {activeQuiz.length > 0 ? "Generate New Quiz" : "Generate Quiz"}
+          {activeQuiz.length > 0 || generatedQuiz ? "Generate New Quiz" : "Generate Quiz"}
         </Button>
 
         {quizToDisplay.length > 0 && (
@@ -343,9 +350,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     <SavedQuizzesDialog
         isOpen={isSavedSetsOpen}
         onClose={() => setIsSavedSetsOpen(false)}
-        savedSets={book?.savedQuizzes || []}
+        book={book}
         onLoadSet={handleLoadSet}
-        bookTitle={book?.title || ""}
+        onBookUpdate={handleBookUpdateFromDialog}
     />
     </>
   )

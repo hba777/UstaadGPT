@@ -65,7 +65,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
       setGeneratedFlashcards(result.flashcards)
-      // Do not set active flashcards here, only when saving.
+      setActiveFlashcards([]);
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast({
@@ -123,12 +123,12 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       onBookUpdate(updatedBook);
       
       if (!currentBookId) {
-        // If it was a new book, redirect, but don't change state here
         router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
       }
       
+      setBook(updatedBook);
       setActiveFlashcards(cardsToSave);
-      setGeneratedFlashcards(null); // Clear generated state
+      setGeneratedFlashcards(null);
       setJustSaved(true);
       toast({
         title: "Success",
@@ -155,6 +155,11 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
         title: "Flashcard Set Loaded",
         description: `Loaded set from ${new Date(set.createdAt.seconds * 1000).toLocaleString()}.`
     })
+  }
+
+  const handleBookUpdateFromDialog = (updatedBook: Book) => {
+    onBookUpdate(updatedBook);
+    setBook(updatedBook);
   }
   
   const isNewUnsavedContent = !!generatedFlashcards;
@@ -191,7 +196,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
               ) : (
                 <BookCopy className="mr-2" />
               )}
-              {activeFlashcards.length > 0 ? "Generate New" : "Generate Flashcards"}
+              {activeFlashcards.length > 0 || generatedFlashcards ? "Generate New" : "Generate Flashcards"}
             </Button>
             
             <Button 
@@ -227,7 +232,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
             </div>
           )}
           
-          {flashcardsToDisplay.length > 0 && !isLoading && (
+          {!isLoading && flashcardsToDisplay.length > 0 && (
             <div className="w-full max-w-sm">
               <Carousel className="w-full">
                 <CarouselContent>
@@ -258,9 +263,9 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       <SavedFlashcardsDialog
         isOpen={isSavedSetsOpen}
         onClose={() => setIsSavedSetsOpen(false)}
-        savedSets={book?.savedFlashcards || []}
+        book={book}
         onLoadSet={handleLoadSet}
-        bookTitle={book?.title || ""}
+        onBookUpdate={handleBookUpdateFromDialog}
       />
     </>
   )
