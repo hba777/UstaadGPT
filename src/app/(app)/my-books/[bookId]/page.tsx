@@ -1,8 +1,7 @@
 
-
 "use client"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { getBookById, type Book } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { AITools } from "@/components/study/ai-tools"
@@ -12,10 +11,11 @@ import { ArrowLeft, Book as BookIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DocumentView } from "@/components/study/document-view"
 
-export default function BookDetailPage({ params }: { params: { bookId: string } }) {
+export default function BookDetailPage() {
   const { user } = useAuthContext()
   const router = useRouter()
-  const bookId = params.bookId
+  const params = useParams()
+  const bookId = params.bookId as string
   const [book, setBook] = useState<Book | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
