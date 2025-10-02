@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Flashcard } from "./flashcard"
-import { saveFlashcardsToFirestore } from "@/lib/firestore"
+import { saveBook } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext" 
 import { useRouter } from "next/navigation"
 
@@ -89,7 +89,7 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
     setIsSaving(true)
     
     try {
-      const newBookId = await saveFlashcardsToFirestore({
+      const newBookId = await saveBook({
         userId: user.uid,
         bookId: currentBookId,
         bookTitle: bookTitle.trim(),
@@ -123,19 +123,21 @@ export function FlashcardView({ documentContent, bookId, bookName }: FlashcardVi
         Flashcard Generator
        </div>
       <div className="flex flex-col gap-2">
-        <div>
-          <Label htmlFor="book-title">Book Title</Label>
-          <Input
-            id="book-title"
-            placeholder="Enter book title..."
-            value={bookTitle}
-            onChange={(e) => {
-                setBookTitle(e.target.value)
-                setIsSaved(false)
-            }}
-            className="mt-1"
-          />
-        </div>
+        {!bookId && (
+            <div>
+              <Label htmlFor="book-title">Book Title</Label>
+              <Input
+                id="book-title"
+                placeholder="Enter book title..."
+                value={bookTitle}
+                onChange={(e) => {
+                    setBookTitle(e.target.value)
+                    setIsSaved(false)
+                }}
+                className="mt-1"
+              />
+            </div>
+        )}
         
         <div className="flex gap-2">
           <Button onClick={handleGenerateFlashcards} disabled={isLoading} className="flex-1">

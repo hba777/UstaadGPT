@@ -15,10 +15,11 @@ if (typeof window !== "undefined") {
 }
 
 interface DocumentUploadProps {
-  onUpload: (content: string, name: string) => void
+  onUpload: (content: string, name: string) => void;
+  disabled?: boolean;
 }
 
-export function DocumentUpload({ onUpload }: DocumentUploadProps) {
+export function DocumentUpload({ onUpload, disabled = false }: DocumentUploadProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,7 +66,8 @@ export function DocumentUpload({ onUpload }: DocumentUploadProps) {
         title: "PDF Processing Error",
         description: "Could not read the PDF file. It might be corrupted or protected.",
       })
-      setIsLoading(false)
+    } finally {
+        setIsLoading(false)
     }
   }
 
@@ -107,14 +109,15 @@ export function DocumentUpload({ onUpload }: DocumentUploadProps) {
         <CardHeader>
           <CardTitle>Start Your Study Session</CardTitle>
           <CardDescription>
-            Upload a PDF document to begin generating summaries, quizzes, and more.
+            Upload a PDF document to create a new book in your library.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div
             className={cn(
                 "flex flex-col items-center gap-4 p-8 border-2 border-dashed rounded-lg transition-colors",
-                isDragging ? "border-primary bg-primary/10" : "border-border"
+                isDragging ? "border-primary bg-primary/10" : "border-border",
+                (isLoading || disabled) && "opacity-50 pointer-events-none"
             )}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -131,7 +134,7 @@ export function DocumentUpload({ onUpload }: DocumentUploadProps) {
                     <p className="text-muted-foreground">
                         Drag & drop a PDF here, or click to select a file.
                     </p>
-                    <Button onClick={triggerFileSelect}>
+                    <Button onClick={triggerFileSelect} disabled={isLoading || disabled}>
                         <FileUp className="mr-2 h-4 w-4" /> Choose a PDF
                     </Button>
                     <input
@@ -140,7 +143,7 @@ export function DocumentUpload({ onUpload }: DocumentUploadProps) {
                         onChange={handleManualUpload}
                         accept="application/pdf"
                         className="sr-only"
-                        disabled={isLoading}
+                        disabled={isLoading || disabled}
                     />
                 </>
             )}

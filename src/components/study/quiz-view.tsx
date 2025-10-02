@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { saveQuizToFirestore, type QuizQuestion } from "@/lib/firestore"
+import { saveBook, type QuizQuestion } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -125,7 +125,7 @@ export function QuizView({ documentContent, bookId, bookName, initialQuiz }: Qui
 
     setIsSaving(true);
     try {
-        const newBookId = await saveQuizToFirestore({
+        const newBookId = await saveBook({
             userId: user.uid,
             bookId: currentBookId,
             bookTitle: bookTitle.trim(),

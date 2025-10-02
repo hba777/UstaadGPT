@@ -38,58 +38,67 @@ import {
     back: string
   }
   
-  export interface SaveFlashcardsParams {
-    userId: string
-    bookId?: string // If updating existing book
-    bookTitle: string
-    flashcards: Flashcard[]
-    documentContent?: string
-  }
-
-  export interface SaveQuizParams {
+  export interface SaveBookParams {
     userId: string;
-    bookId?: string;
+    bookId?: string; // If updating existing book
     bookTitle: string;
-    quiz: QuizQuestion[];
     documentContent?: string;
+    flashcards?: Flashcard[];
+    quiz?: QuizQuestion[];
   }
   
-  // Save or update flashcards for a book
+  // Save or update a book
+  export async function saveBook({
+    userId,
+    bookId,
+    bookTitle,
+    documentContent,
+    flashcards,
+    quiz,
+  }: SaveBookParams): Promise<string> {
+    try {
+      const bookRef = bookId ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
+      const bookDoc = bookId ? await getDoc(bookRef) : null;
+  
+      const bookData: Partial<Book> = {
+        userId,
+        title: bookTitle,
+        updatedAt: serverTimestamp(),
+      };
+  
+      // Only include fields if they are provided
+      if (documentContent !== undefined) bookData.documentContent = documentContent;
+      if (flashcards !== undefined) bookData.flashcards = flashcards;
+      if (quiz !== undefined) bookData.quiz = quiz;
+  
+      if (bookDoc && bookDoc.exists()) {
+        // Update existing book
+        await updateDoc(bookRef, bookData);
+        return bookId!;
+      } else {
+        // Create new book
+        bookData.createdAt = serverTimestamp();
+        // Ensure flashcards/quiz are at least empty arrays on creation
+        if (!bookData.flashcards) bookData.flashcards = [];
+        if (!bookData.quiz) bookData.quiz = [];
+
+        await addDoc(collection(db, 'books'), bookData);
+        return bookRef.id;
+      }
+    } catch (error) {
+      console.error('Error saving book:', error);
+      throw new Error('Failed to save book');
+    }
+  }
+
   export async function saveFlashcardsToFirestore({
     userId,
     bookId,
     bookTitle,
     flashcards,
     documentContent
-  }: SaveFlashcardsParams): Promise<string> {
-    try {
-      const bookData: Partial<Book> & { userId: string; title: string; flashcards: Flashcard[]; updatedAt: any } = {
-        userId,
-        title: bookTitle,
-        flashcards,
-        documentContent,
-        updatedAt: serverTimestamp(),
-      }
-
-      if (bookId) {
-        // Update existing book
-        const bookRef = doc(db, 'books', bookId)
-        await updateDoc(bookRef, bookData)
-        return bookId
-      } else {
-        // Create new book
-        const booksCollection = collection(db, 'books')
-        const docRef = await addDoc(booksCollection, {
-            ...bookData,
-            createdAt: serverTimestamp(),
-            flashcards: bookData.flashcards,
-        })
-        return docRef.id
-      }
-    } catch (error) {
-      console.error('Error saving flashcards:', error)
-      throw new Error('Failed to save flashcards')
-    }
+  }: SaveBookParams): Promise<string> {
+    return saveBook({ userId, bookId, bookTitle, flashcards, documentContent });
   }
 
   export async function saveQuizToFirestore({
@@ -98,40 +107,8 @@ import {
     bookTitle,
     quiz,
     documentContent,
-  }: SaveQuizParams): Promise<string> {
-    try {
-      const bookData: Partial<Book> & {
-        userId: string;
-        title: string;
-        quiz: QuizQuestion[];
-        updatedAt: any;
-      } = {
-        userId,
-        title: bookTitle,
-        quiz,
-        documentContent,
-        updatedAt: serverTimestamp(),
-      };
-  
-      if (bookId) {
-        // Update existing book
-        const bookRef = doc(db, "books", bookId);
-        await updateDoc(bookRef, bookData);
-        return bookId;
-      } else {
-        // Create new book
-        const booksCollection = collection(db, "books");
-        const docRef = await addDoc(booksCollection, {
-          ...bookData,
-          createdAt: serverTimestamp(),
-          flashcards: [], // Initialize with empty flashcards
-        });
-        return docRef.id;
-      }
-    } catch (error) {
-      console.error("Error saving quiz:", error);
-      throw new Error("Failed to save quiz");
-    }
+  }: SaveBookParams): Promise<string> {
+    return saveBook({ userId, bookId, bookTitle, quiz, documentContent });
   }
   
   // Get all books for a user
@@ -209,3 +186,4 @@ import {
       throw new Error('Failed to search books')
     }
   }
+
