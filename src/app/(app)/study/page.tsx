@@ -31,7 +31,7 @@ export default function StudyPage() {
     }
     setIsSaving(true)
     try {
-      const newBookId = await saveBook({
+      await saveBook({
         userId: user.uid,
         bookTitle: title,
         documentContent: documentContent,
@@ -41,7 +41,7 @@ export default function StudyPage() {
         title: "Book Saved!",
         description: `"${title}" has been added to your library.`,
       })
-      router.push(`/my-books/${newBookId}`)
+      router.push(`/my-books`)
     } catch (error) {
       console.error("Error saving book:", error)
       toast({ variant: "destructive", title: "Error", description: "Could not save the book." })
