@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getBookById, type Book } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
-import { BookFlashcardsView } from "@/components/study/book-flashcards-view"
 import { AITools } from "@/components/study/ai-tools"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -13,12 +12,10 @@ import { ArrowLeft, Book as BookIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DocumentView } from "@/components/study/document-view"
 
-type ViewMode = 'view-book' | 'edit-book'
-
 export default function BookDetailPage({ params }: { params: { bookId: string } }) {
   const { user } = useAuthContext()
   const router = useRouter()
-  const { bookId } = params
+  const bookId = params.bookId
   const [book, setBook] = useState<Book | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -95,4 +92,3 @@ export default function BookDetailPage({ params }: { params: { bookId: string } 
     </div>
   )
 }
-
