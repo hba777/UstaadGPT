@@ -1,4 +1,3 @@
-
 // lib/firestore.ts
 import { 
     doc, 
@@ -12,7 +11,8 @@ import {
     serverTimestamp,
     deleteDoc,
     getDoc,
-    Timestamp
+    Timestamp,
+    setDoc,
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
 
@@ -57,9 +57,9 @@ import {
     quiz,
   }: SaveBookParams): Promise<string> {
     try {
-      const bookRef = bookId ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
-      const bookDoc = bookId ? await getDoc(bookRef) : null;
-  
+      const isUpdating = !!bookId;
+      const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
+      
       const bookData: Partial<Book> = {
         userId,
         title: bookTitle,
@@ -71,7 +71,7 @@ import {
       if (flashcards !== undefined) bookData.flashcards = flashcards;
       if (quiz !== undefined) bookData.quiz = quiz;
   
-      if (bookDoc && bookDoc.exists()) {
+      if (isUpdating) {
         // Update existing book
         await updateDoc(bookRef, bookData);
         return bookId!;
@@ -82,7 +82,7 @@ import {
         if (!bookData.flashcards) bookData.flashcards = [];
         if (!bookData.quiz) bookData.quiz = [];
 
-        await addDoc(collection(db, 'books'), bookData);
+        await setDoc(bookRef, bookData);
         return bookRef.id;
       }
     } catch (error) {
@@ -186,4 +186,3 @@ import {
       throw new Error('Failed to search books')
     }
   }
-
