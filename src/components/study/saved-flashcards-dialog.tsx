@@ -1,6 +1,8 @@
 
 "use client"
 import { useState } from "react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
@@ -35,17 +37,19 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
             toast({ variant: "destructive", title: "No flashcards to export." });
             return;
         }
-        const content = set.cards.map(card => `Front: ${card.front}\nBack: ${card.back}`).join('\n\n');
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${book?.title || 'flashcards'}-set.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast({ title: "Exported", description: "Flashcard set downloaded as a .txt file" });
+
+        const doc = new jsPDF();
+        doc.text(`Flashcards for: ${book?.title || 'Untitled Book'}`, 10, 10);
+        
+        autoTable(doc, {
+            head: [['Front', 'Back']],
+            body: set.cards.map(card => [card.front, card.back]),
+            startY: 20,
+        });
+
+        doc.save(`${book?.title || 'flashcards'}-set.pdf`);
+
+        toast({ title: "Exported", description: "Flashcard set downloaded as a PDF." });
     };
 
     const handleDelete = async (set: SavedFlashcardSet) => {

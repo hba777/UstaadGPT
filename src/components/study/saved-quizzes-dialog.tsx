@@ -1,6 +1,7 @@
 
 "use client"
 import { useState } from "react";
+import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
@@ -35,25 +36,41 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
             toast({ variant: "destructive", title: "No quiz to export." });
             return;
         }
-        let content = `Quiz for: ${book?.title || 'Untitled Document'}\n\n`;
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text(`Quiz for: ${book?.title || 'Untitled Document'}`, 10, 10);
+        doc.setFontSize(12);
+        
+        let y = 20;
+
         set.questions.forEach((q, qIndex) => {
-            content += `Question ${qIndex + 1}: ${q.questionText}\n`;
+            if (y > 270) { // Check if new page is needed
+                doc.addPage();
+                y = 10;
+            }
+
+            const questionText = doc.splitTextToSize(`Question ${qIndex + 1}: ${q.questionText}`, 180);
+            doc.text(questionText, 10, y);
+            y += questionText.length * 5;
+
             q.options.forEach((opt, oIndex) => {
-                content += `  ${String.fromCharCode(97 + oIndex)}) ${opt}\n`;
+                const optionText = `${String.fromCharCode(97 + oIndex)}) ${opt}`;
+                const fullOption = oIndex === q.correctAnswerIndex ? `(Correct) ${optionText}` : optionText;
+                
+                if (oIndex === q.correctAnswerIndex) {
+                    doc.setTextColor(0, 128, 0); // Green
+                }
+                const splitOption = doc.splitTextToSize(fullOption, 170);
+                doc.text(splitOption, 15, y);
+                y += splitOption.length * 5;
+                doc.setTextColor(0, 0, 0); // Reset to black
             });
-            content += `Correct Answer: ${String.fromCharCode(97 + q.correctAnswerIndex)}) ${q.options[q.correctAnswerIndex]}\n\n`;
+            y += 5; // Extra space between questions
         });
 
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${book?.title || 'quiz'}-set.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast({ title: "Exported", description: "Quiz set downloaded as a .txt file" });
+        doc.save(`${book?.title || 'quiz'}-set.pdf`);
+        toast({ title: "Exported", description: "Quiz set downloaded as a PDF." });
     };
 
     const handleDelete = async (set: SavedQuizSet) => {

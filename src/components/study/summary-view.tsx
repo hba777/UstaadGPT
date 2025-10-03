@@ -3,6 +3,7 @@
 
 import { useState } from "react"
 import { LoaderCircle, Sparkles, Download } from "lucide-react"
+import jsPDF from "jspdf"
 
 import { summarizeDocument } from "@/ai/flows/summarize-document"
 import { Button } from "@/components/ui/button"
@@ -46,16 +47,15 @@ export function SummaryView({ documentContent }: SummaryViewProps) {
         });
         return;
     }
-    const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "summary.txt";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: "Summary downloaded as summary.txt" });
+    
+    const doc = new jsPDF();
+    doc.text("Summary", 10, 10);
+    // Split text into lines that fit the page width
+    const splitText = doc.splitTextToSize(summary, 180);
+    doc.text(splitText, 10, 20);
+    doc.save("summary.pdf");
+
+    toast({ title: "Exported", description: "Summary downloaded as summary.pdf" });
   }
 
   return (
@@ -71,7 +71,7 @@ export function SummaryView({ documentContent }: SummaryViewProps) {
             </Button>
             <Button variant="outline" onClick={handleExport} disabled={!summary || isLoading}>
                 <Download className="mr-2 h-4 w-4" />
-                Export as TXT
+                Export as PDF
             </Button>
       </div>
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4">
