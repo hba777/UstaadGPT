@@ -70,7 +70,12 @@ export default function BookDetailPage() {
     )
   }
 
-  const fullTextContent = (book.documentContent || []).join('\n\n');
+  let fullTextContent = '';
+    if (Array.isArray(book.documentContent)) {
+      fullTextContent = (book.documentContent || []).join('\n\n');
+    } else if (typeof book.documentContent === 'string') {
+      fullTextContent = book.documentContent;
+    }
   
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col">
@@ -87,7 +92,7 @@ export default function BookDetailPage() {
        <ResizablePanelGroup direction="horizontal" className="flex-grow rounded-lg border">
         <ResizablePanel defaultSize={50} minSize={30}>
             <div className="p-6 h-full min-w-0">
-                <DocumentView pages={book.documentContent || []} />
+                <DocumentView pages={Array.isArray(book.documentContent) ? book.documentContent : (book.documentContent ? [book.documentContent] : [])} />
             </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
