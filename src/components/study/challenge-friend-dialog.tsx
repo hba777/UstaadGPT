@@ -32,6 +32,7 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
   const [openPopover, setOpenPopover] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -106,8 +107,11 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
 
   const handleClose = () => {
     setSelectedFriend(null);
+    setSearchQuery("");
     onClose();
   };
+
+  const filteredFriends = friends.filter(friend => friend.displayName.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -143,20 +147,21 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Search friends..." />
+                    <Command shouldFilter={false}>
+                        <CommandInput 
+                            placeholder="Search friends..." 
+                            value={searchQuery}
+                            onValueChange={setSearchQuery}
+                        />
                         <CommandList>
                             <CommandEmpty>No friend found.</CommandEmpty>
                             <CommandGroup>
-                                {friends.map((friend) => (
+                                {filteredFriends.map((friend) => (
                                 <CommandItem
                                     key={friend.uid}
-                                    value={friend.displayName}
-                                    onSelect={(currentValue) => {
-                                        const friendToSelect = friends.find(f => f.displayName.toLowerCase() === currentValue.toLowerCase());
-                                        if (friendToSelect) {
-                                            setSelectedFriend(selectedFriend?.uid === friendToSelect.uid ? null : friendToSelect);
-                                        }
+                                    value={friend.uid}
+                                    onSelect={() => {
+                                        setSelectedFriend(selectedFriend?.uid === friend.uid ? null : friend);
                                         setOpenPopover(false);
                                     }}
                                 >
