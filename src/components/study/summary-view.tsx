@@ -1,7 +1,8 @@
+
 "use client"
 
 import { useState } from "react"
-import { LoaderCircle, Sparkles } from "lucide-react"
+import { LoaderCircle, Sparkles, Download } from "lucide-react"
 
 import { summarizeDocument } from "@/ai/flows/summarize-document"
 import { Button } from "@/components/ui/button"
@@ -36,16 +37,43 @@ export function SummaryView({ documentContent }: SummaryViewProps) {
     }
   }
 
+  const handleExport = () => {
+    if (!summary) {
+        toast({
+            variant: "destructive",
+            title: "No Summary",
+            description: "Please generate a summary before exporting.",
+        });
+        return;
+    }
+    const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "summary.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: "Summary downloaded as summary.txt" });
+  }
+
   return (
     <div className="flex flex-col gap-4 h-full">
-      <Button onClick={handleGenerateSummary} disabled={isLoading}>
-        {isLoading ? (
-          <LoaderCircle className="mr-2 animate-spin" />
-        ) : (
-          <Sparkles className="mr-2" />
-        )}
-        Generate Summary
-      </Button>
+        <div className="flex gap-2">
+            <Button onClick={handleGenerateSummary} disabled={isLoading} className="flex-1">
+                {isLoading ? (
+                <LoaderCircle className="mr-2 animate-spin" />
+                ) : (
+                <Sparkles className="mr-2" />
+                )}
+                Generate Summary
+            </Button>
+            <Button variant="outline" onClick={handleExport} disabled={!summary || isLoading}>
+                <Download className="mr-2 h-4 w-4" />
+                Export as TXT
+            </Button>
+      </div>
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4">
         <ScrollArea className="h-full">
           {isLoading && (
