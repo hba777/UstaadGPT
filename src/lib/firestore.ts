@@ -52,14 +52,14 @@ import {
     savedQuizzes?: SavedQuizSet[]
     createdAt: any
     updatedAt: any
-    documentContent?: string 
+    documentContent?: string[] 
   }
   
   export interface SaveBookParams {
     userId: string;
     bookId?: string; // If updating existing book
     bookTitle: string;
-    documentContent?: string;
+    documentContent?: string[];
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
     saveNewQuizSet?: boolean;
@@ -81,20 +81,29 @@ import {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
       
-      const bookData: Partial<Book> & { updatedAt: any } = {
-        userId,
-        title: bookTitle,
-        updatedAt: serverTimestamp(),
-      };
+      if (!isUpdating) {
+        // Create new book
+        const newBookData: Omit<Book, 'id'> = {
+          userId,
+          title: bookTitle,
+          documentContent: documentContent || [],
+          flashcards: [],
+          quiz: [],
+          savedFlashcards: [],
+          savedQuizzes: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(bookRef, newBookData);
+      } else {
+        // Update existing book
+        const updatePayload: any = {
+          title: bookTitle,
+          updatedAt: serverTimestamp(),
+        };
   
-      if (documentContent !== undefined) bookData.documentContent = documentContent;
-      
-      const updatePayload: any = {
-        title: bookTitle,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (isUpdating) {
+        if (documentContent !== undefined) updatePayload.documentContent = documentContent;
+        
         if (flashcards) {
           updatePayload.flashcards = flashcards;
           if (saveNewFlashcardSet) {
@@ -116,14 +125,6 @@ import {
           }
         }
         await updateDoc(bookRef, updatePayload);
-      } else {
-        // Create new book
-        bookData.createdAt = serverTimestamp();
-        bookData.flashcards = flashcards || [];
-        bookData.quiz = quiz || [];
-        bookData.savedFlashcards = [];
-        bookData.savedQuizzes = [];
-        await setDoc(bookRef, bookData, { merge: true });
       }
 
       const savedDoc = await getDoc(bookRef);
@@ -232,7 +233,7 @@ import {
       
       return books.filter(book => 
         book.title.toLowerCase().includes(searchLower) ||
-        (book.documentContent && book.documentContent.toLowerCase().includes(searchLower))
+        (book.documentContent && book.documentContent.join(' ').toLowerCase().includes(searchLower))
       )
     } catch (error) {
       console.error('Error searching books:', error)

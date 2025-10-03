@@ -10,7 +10,7 @@ import { saveBook } from "@/lib/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 export default function StudyPage() {
-  const [documentContent, setDocumentContent] = useState<string>("")
+  const [documentPages, setDocumentPages] = useState<string[]>([])
   const [documentName, setDocumentName] = useState<string>("")
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -18,8 +18,8 @@ export default function StudyPage() {
   const { toast } = useToast()
   const router = useRouter()
 
-  const handleUpload = (content: string, name: string) => {
-    setDocumentContent(content)
+  const handleUpload = (pages: string[], name: string) => {
+    setDocumentPages(pages)
     setDocumentName(name)
     setShowSaveDialog(true)
   }
@@ -34,8 +34,7 @@ export default function StudyPage() {
       await saveBook({
         userId: user.uid,
         bookTitle: title,
-        documentContent: documentContent,
-        flashcards: [], // Start with no flashcards
+        documentContent: documentPages,
       })
       toast({
         title: "Book Saved!",
@@ -51,7 +50,7 @@ export default function StudyPage() {
 
   const handleCloseDialog = () => {
     setShowSaveDialog(false)
-    setDocumentContent("")
+    setDocumentPages([])
     setDocumentName("")
   }
 

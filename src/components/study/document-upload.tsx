@@ -15,7 +15,7 @@ if (typeof window !== "undefined") {
 }
 
 interface DocumentUploadProps {
-  onUpload: (content: string, name: string) => void;
+  onUpload: (pages: string[], name: string) => void;
   disabled?: boolean;
 }
 
@@ -49,45 +49,35 @@ export function DocumentUpload({ onUpload, disabled = false }: DocumentUploadPro
     try {
       const arrayBuffer = await file.arrayBuffer()
       const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
-      let fullText = ""
+      const pagesText: string[] = [];
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
         const textContent = await page.getTextContent()
         
-        // Sort items by their vertical, then horizontal position
         const items = textContent.items.sort((a: any, b: any) => {
-            if (a.transform[5] > b.transform[5]) return -1; // Higher y-coordinate (lower on page) first
+            if (a.transform[5] > b.transform[5]) return -1;
             if (a.transform[5] < b.transform[5]) return 1;
-            return a.transform[4] - b.transform[4]; // Then by x-coordinate
+            return a.transform[4] - b.transform[4];
         });
         
         let lastY = -1;
-        let lastX = -1;
-        let line = '';
+        let pageText = '';
 
         for (const item of items) {
             const currentY = item.transform[5];
-            const currentX = item.transform[4];
-
-            if (lastY !== -1 && Math.abs(currentY - lastY) > (item.height * 0.5) ) {
-                fullText += line.trim() + '\n';
-                line = '';
-            }
             
-            if (lastX !== -1 && Math.abs(currentX - (lastX + (item.width * 1.5))) > (item.width * 2) ) {
-                 line += '   '; // Add space for horizontal gaps
+            if (lastY !== -1 && Math.abs(currentY - lastY) > (item.height * 0.5) ) {
+                pageText += '\n';
             }
-
-            line += item.str;
+            pageText += item.str + ' ';
             lastY = currentY;
-            lastX = currentX;
         }
-        fullText += line.trim() + '\n'; // Add the last line
+        pagesText.push(pageText.trim());
       }
       
       const fileName = file.name.replace(/\.pdf$/i, '')
-      onUpload(fullText, fileName)
+      onUpload(pagesText, fileName)
     } catch (error) {
       console.error("Error processing PDF:", error)
       toast({
