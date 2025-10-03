@@ -59,7 +59,7 @@ import {
     userId: string;
     bookId?: string; // If updating existing book
     bookTitle: string;
-    documentContent?: string[];
+    documentContent?: string[] | string; // Can be string for legacy
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
     saveNewQuizSet?: boolean;
@@ -86,7 +86,7 @@ import {
         const newBookData: Omit<Book, 'id'> = {
           userId,
           title: bookTitle,
-          documentContent: documentContent || [],
+          documentContent: Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []),
           flashcards: [],
           quiz: [],
           savedFlashcards: [],
@@ -102,7 +102,10 @@ import {
           updatedAt: serverTimestamp(),
         };
   
-        if (documentContent !== undefined) updatePayload.documentContent = documentContent;
+        // Only update documentContent if it's provided
+        if (documentContent !== undefined) {
+           updatePayload.documentContent = Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []);
+        }
         
         if (flashcards) {
           updatePayload.flashcards = flashcards;
@@ -233,10 +236,11 @@ import {
       
       return books.filter(book => 
         book.title.toLowerCase().includes(searchLower) ||
-        (book.documentContent && book.documentContent.join(' ').toLowerCase().includes(searchLower))
+        (book.documentContent && Array.isArray(book.documentContent) && book.documentContent.join(' ').toLowerCase().includes(searchLower))
       )
     } catch (error) {
       console.error('Error searching books:', error)
       throw new Error('Failed to search books')
     }
   }
+
