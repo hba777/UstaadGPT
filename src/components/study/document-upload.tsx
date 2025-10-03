@@ -54,7 +54,36 @@ export function DocumentUpload({ onUpload, disabled = false }: DocumentUploadPro
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
         const textContent = await page.getTextContent()
-        fullText += textContent.items.map((item: any) => item.str).join(" ") + "\n"
+        
+        // Sort items by their vertical, then horizontal position
+        const items = textContent.items.sort((a: any, b: any) => {
+            if (a.transform[5] > b.transform[5]) return -1; // Higher y-coordinate (lower on page) first
+            if (a.transform[5] < b.transform[5]) return 1;
+            return a.transform[4] - b.transform[4]; // Then by x-coordinate
+        });
+        
+        let lastY = -1;
+        let lastX = -1;
+        let line = '';
+
+        for (const item of items) {
+            const currentY = item.transform[5];
+            const currentX = item.transform[4];
+
+            if (lastY !== -1 && Math.abs(currentY - lastY) > (item.height * 0.5) ) {
+                fullText += line.trim() + '\n';
+                line = '';
+            }
+            
+            if (lastX !== -1 && Math.abs(currentX - (lastX + (item.width * 1.5))) > (item.width * 2) ) {
+                 line += '   '; // Add space for horizontal gaps
+            }
+
+            line += item.str;
+            lastY = currentY;
+            lastX = currentX;
+        }
+        fullText += line.trim() + '\n'; // Add the last line
       }
       
       const fileName = file.name.replace(/\.pdf$/i, '')
