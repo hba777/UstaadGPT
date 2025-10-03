@@ -302,13 +302,13 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             </Button>
         )}
          {book && (
-            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0} className="flex-1">
+            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
                 <History className="mr-2 h-4 w-4" />
-                View Saved Sets
+                View Saved
             </Button>
          )}
 
-         <Button variant="default" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge} className="flex-1">
+         <Button variant="outline" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge}>
             <Swords className="mr-2 h-4 w-4" />
             Challenge Friend
         </Button>
