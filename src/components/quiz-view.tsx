@@ -17,7 +17,7 @@ import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet }
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
-import { SavedQuizzesDialog } from "./saved-quizzes-dialog"
+import { SavedQuizzesDialog } from "@/components/study/saved-quizzes-dialog"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
@@ -390,3 +390,5 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
+
+    
