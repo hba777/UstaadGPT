@@ -151,10 +151,12 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                                 {friends.map((friend) => (
                                 <CommandItem
                                     key={friend.uid}
-                                    value={friend.displayName.toLowerCase()}
-                                    keywords={[friend.displayName]}
-                                    onSelect={() => {
-                                        setSelectedFriend(selectedFriend?.uid === friend.uid ? null : friend);
+                                    value={friend.displayName}
+                                    onSelect={(currentValue) => {
+                                        const friendToSelect = friends.find(f => f.displayName.toLowerCase() === currentValue.toLowerCase());
+                                        if (friendToSelect) {
+                                            setSelectedFriend(selectedFriend?.uid === friendToSelect.uid ? null : friendToSelect);
+                                        }
                                         setOpenPopover(false);
                                     }}
                                 >
