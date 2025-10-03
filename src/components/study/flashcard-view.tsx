@@ -1,7 +1,7 @@
 
 "use client"
 import { useState, useEffect } from "react"
-import { BookCopy, LoaderCircle, Save, Check, History, Download } from "lucide-react"
+import { BookCopy, LoaderCircle, Save, Check, History } from "lucide-react"
 import type { GenerateFlashcardsOutput, Flashcard as FlashcardType } from "@/ai/flows/generate-flashcards"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { Button } from "@/components/ui/button"
@@ -181,24 +181,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
        setActiveFlashcardSet(latestSet || null);
     }
   }
-
-  const handleExport = () => {
-    if (flashcardsToDisplay.length === 0) {
-        toast({ variant: "destructive", title: "No flashcards to export." });
-        return;
-    }
-    const content = flashcardsToDisplay.map(card => `Front: ${card.front}\nBack: ${card.back}`).join('\n\n');
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'flashcards.txt';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: "Flashcards downloaded as flashcards.txt" });
-  };
   
   const isNewUnsavedContent = !!generatedFlashcards;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
@@ -260,10 +242,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
                 </Button>
             )}
           </div>
-          <Button variant="outline" onClick={handleExport} disabled={flashcardsToDisplay.length === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                Export as TXT
-            </Button>
         </div>
 
         <div className="flex-grow flex items-center justify-center rounded-lg border bg-card text-card-foreground shadow-sm p-4 min-h-0">

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords, Download } from "lucide-react"
+import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords } from "lucide-react"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -251,32 +251,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     }
   }
 
-  const handleExport = () => {
-    if (quizToDisplay.length === 0) {
-        toast({ variant: "destructive", title: "No quiz to export." });
-        return;
-    }
-    let content = `Quiz for: ${bookTitle || 'Untitled Document'}\n\n`;
-    quizToDisplay.forEach((q, qIndex) => {
-        content += `Question ${qIndex + 1}: ${q.questionText}\n`;
-        q.options.forEach((opt, oIndex) => {
-            content += `  ${String.fromCharCode(97 + oIndex)}) ${opt}\n`;
-        });
-        content += `Correct Answer: ${String.fromCharCode(97 + q.correctAnswerIndex)}) ${q.options[q.correctAnswerIndex]}\n\n`;
-    });
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'quiz.txt';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: "Quiz downloaded as quiz.txt" });
-  };
-
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
@@ -339,11 +313,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             Challenge Friend
         </Button>
       </div>
-      <Button variant="outline" onClick={handleExport} disabled={quizToDisplay.length === 0}>
-        <Download className="mr-2 h-4 w-4" />
-        Export as TXT
-      </Button>
-
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4">

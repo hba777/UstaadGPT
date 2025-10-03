@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type Book, type SavedFlashcardSet, deleteSavedFlashcardSet, getBookById } from "@/lib/firestore"
-import { History, BookCopy, Eye, Trash2, LoaderCircle } from "lucide-react"
+import { History, BookCopy, Eye, Trash2, LoaderCircle, Download } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthContext } from "@/context/AuthContext"
@@ -29,6 +29,24 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
         const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(0);
         return dateB.getTime() - dateA.getTime();
     });
+
+    const handleExport = (set: SavedFlashcardSet) => {
+        if (set.cards.length === 0) {
+            toast({ variant: "destructive", title: "No flashcards to export." });
+            return;
+        }
+        const content = set.cards.map(card => `Front: ${card.front}\nBack: ${card.back}`).join('\n\n');
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${book?.title || 'flashcards'}-set.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast({ title: "Exported", description: "Flashcard set downloaded as a .txt file" });
+    };
 
     const handleDelete = async (set: SavedFlashcardSet) => {
         if (!book?.id || !user?.uid) {
@@ -91,6 +109,10 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
                                                     <Button size="sm" variant="outline" onClick={() => onLoadSet(set)}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View
+                                                    </Button>
+                                                     <Button size="sm" variant="outline" onClick={() => handleExport(set)}>
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        Export
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
