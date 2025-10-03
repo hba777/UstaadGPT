@@ -52,7 +52,7 @@ import {
     savedQuizzes?: SavedQuizSet[]
     createdAt: any
     updatedAt: any
-    documentContent?: string[] 
+    documentContent?: string[] | string
   }
   
   export interface SaveBookParams {
@@ -103,6 +103,8 @@ import {
         };
   
         // Only update documentContent if it's provided
+        // This is important for when we're just saving a new quiz/flashcard set
+        // to an existing book, we don't want to overwrite the document content.
         if (documentContent !== undefined) {
            updatePayload.documentContent = Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []);
         }
@@ -134,7 +136,15 @@ import {
       if (!savedDoc.exists()) {
         throw new Error("Failed to retrieve saved book");
       }
-      return { id: savedDoc.id, ...savedDoc.data() } as Book;
+      const savedData = savedDoc.data();
+      
+      // If we only updated, the doc content might not be in the payload,
+      // so merge it to ensure the returned object is complete.
+      if (isUpdating && documentContent === undefined && savedData.documentContent) {
+          return { id: savedDoc.id, ...savedData } as Book;
+      }
+      
+      return { id: savedDoc.id, ...savedData } as Book;
 
     } catch (error) {
       console.error('Error saving book:', error);
@@ -243,4 +253,3 @@ import {
       throw new Error('Failed to search books')
     }
   }
-

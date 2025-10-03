@@ -112,14 +112,17 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     setIsSaving(true)
     
     try {
-      const updatedBook = await saveBook({
+      const saveParams = {
         userId: user.uid,
         bookId: currentBookId,
         bookTitle: bookTitle.trim(),
         flashcards: cardsToSave,
-        documentContent: documentContent,
         saveNewFlashcardSet: true,
-      })
+        // Only pass documentContent if it's a new book
+        ...(!currentBookId && { documentContent: documentContent })
+      };
+      
+      const updatedBook = await saveBook(saveParams);
       
       onBookUpdate(updatedBook);
       

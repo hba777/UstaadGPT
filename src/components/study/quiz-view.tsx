@@ -143,14 +143,16 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
     setIsSaving(true);
     try {
-        const updatedBook = await saveBook({
+        const saveParams = {
             userId: user.uid,
             bookId: currentBookId,
             bookTitle: bookTitle.trim(),
             quiz: quizToDisplay,
-            documentContent: documentContent,
-            saveNewQuizSet: true
-        });
+            saveNewQuizSet: true,
+             // Only pass documentContent if it's a new book
+            ...(!currentBookId && { documentContent: documentContent })
+        };
+        const updatedBook = await saveBook(saveParams);
 
         onBookUpdate(updatedBook);
 
@@ -246,7 +248,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 <History className="mr-2 h-4 w-4" />
                 View Saved
             </Button>
-        )}
+         )}
       </div>
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
