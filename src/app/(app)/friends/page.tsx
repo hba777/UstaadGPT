@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot, doc, getDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuthContext } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -205,21 +206,46 @@ function LeaderboardTab() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentUser) return;
     setIsLoading(true);
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, orderBy('points', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const userList: UserProfile[] = [];
-      snapshot.forEach((doc) => {
-        userList.push(doc.data() as UserProfile);
-      });
-      setUsers(userList);
-      setIsLoading(false);
-    });
+    const fetchLeaderboard = async () => {
+      try {
+        // 1. Get friend UIDs
+        const friendsRef = collection(db, 'users', currentUser.uid, 'friends');
+        const friendsSnapshot = await getDocs(friendsRef);
+        const friendUids = friendsSnapshot.docs.map(doc => doc.data().uid as string);
 
-    return () => unsubscribe();
-  }, []);
+        // 2. Combine with current user's UID
+        const allUids = [...new Set([currentUser.uid, ...friendUids])];
+        
+        if (allUids.length === 0) {
+            setUsers([]);
+            setIsLoading(false);
+            return;
+        }
+
+        // 3. Fetch all user profiles. Firestore 'in' query is limited to 30 items.
+        // If the user can have more friends, this would need chunking.
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('uid', 'in', allUids));
+        
+        const userDocs = await getDocs(q);
+        const userList = userDocs.docs.map(doc => doc.data() as UserProfile);
+
+        // 4. Sort by points
+        userList.sort((a, b) => b.points - a.points);
+        
+        setUsers(userList);
+      } catch (error) {
+        console.error("Error fetching leaderboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, [currentUser]);
 
   return (
     <Card>
@@ -237,7 +263,7 @@ function LeaderboardTab() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : users.length > 0 ? (
           <ul className="space-y-2">
             {users.map((user, index) => (
               <li key={user.uid}>
@@ -264,6 +290,11 @@ function LeaderboardTab() {
               </li>
             ))}
           </ul>
+        ) : (
+             <div className="text-center text-muted-foreground py-10">
+               <p>Your friends leaderboard is empty.</p>
+               <p className="text-sm">Add some friends to start competing!</p>
+            </div>
         )}
       </CardContent>
     </Card>
@@ -308,3 +339,5 @@ export default function FriendsPage() {
     </div>
   );
 }
+
+    
