@@ -7,9 +7,8 @@ import { db } from "@/lib/firebase";
 import { useAuthContext } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
-import { ChevronsUpDown, Check, LoaderCircle, Send } from "lucide-react";
+import { ChevronsUpDown, Check, LoaderCircle, Send, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/models/user";
 import type { Book, SavedQuizSet } from "@/lib/firestore";
@@ -29,15 +28,22 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
   const { toast } = useToast();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
-  const [openPopover, setOpenPopover] = useState(false);
+  const [showFriendList, setShowFriendList] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!isOpen || !user) return;
+    if (!isOpen) {
+      // Reset state when dialog is closed
+      setSelectedFriend(null);
+      setShowFriendList(false);
+      setSearchQuery("");
+      return;
+    };
 
     const fetchFriends = async () => {
+      if (!user) return;
       setIsLoading(true);
       try {
         const friendsRef = collection(db, 'users', user.uid, 'friends');
@@ -59,7 +65,7 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
           }
         }
         setFriends(friendList);
-      } catch (error) {
+      } catch (error) => {
         console.error("Error fetching friends:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not load your friends." });
       } finally {
@@ -96,7 +102,7 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
             winnerUid: null,
         });
         toast({ title: "Challenge Sent!", description: `Your quiz challenge has been sent to ${selectedFriend.displayName}.` });
-        handleClose();
+        onClose();
     } catch(error) {
         console.error("Error sending challenge:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to send the challenge. Please try again." });
@@ -104,17 +110,13 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
         setIsSending(false);
     }
   };
-
-  const handleClose = () => {
-    setSelectedFriend(null);
-    setSearchQuery("");
-    onClose();
-  };
-
-  const filteredFriends = friends.filter(friend => friend.displayName.toLowerCase().includes(searchQuery.toLowerCase()));
+  
+  const filteredFriends = friends.filter(friend => 
+    friend.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Challenge a Friend</DialogTitle>
@@ -131,63 +133,58 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                 <LoaderCircle className="h-4 w-4 animate-spin" />
                 <p className="text-sm text-muted-foreground">Loading friends...</p>
             </div>
-          ) : friends.length > 0 ? (
-            <Popover open={openPopover} onOpenChange={setOpenPopover}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openPopover}
-                        className="w-full justify-between"
-                    >
-                    {selectedFriend
-                        ? selectedFriend.displayName
-                        : "Select a friend..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command shouldFilter={false}>
-                        <CommandInput 
-                            placeholder="Search friends..."
-                            value={searchQuery}
-                            onValueChange={setSearchQuery}
-                        />
-                        <CommandList>
-                            <CommandEmpty>No friend found.</CommandEmpty>
-                            <CommandGroup>
-                                {filteredFriends.map((friend) => (
-                                <CommandItem
-                                    key={friend.uid}
-                                    value={friend.uid}
-                                    onSelect={() => {
-                                        setSelectedFriend(friend);
-                                        setOpenPopover(false);
-                                        setSearchQuery("");
-                                    }}
-                                    className="cursor-pointer"
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedFriend?.uid === friend.uid ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {friend.displayName}
-                                </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-          ) : (
+          ) : friends.length === 0 ? (
              <p className="text-sm text-center text-muted-foreground pt-4">You have no friends to challenge. Add friends from the 'Friends' page.</p>
+          ) : showFriendList ? (
+            <Command shouldFilter={false} className="border rounded-lg">
+                <CommandInput 
+                    placeholder="Search friends..."
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                />
+                <CommandList>
+                    <CommandEmpty>No friend found.</CommandEmpty>
+                    <CommandGroup>
+                        {filteredFriends.map((friend) => (
+                        <CommandItem
+                            key={friend.uid}
+                            value={friend.uid}
+                            onSelect={() => {
+                                setSelectedFriend(friend);
+                                setShowFriendList(false);
+                                setSearchQuery("");
+                            }}
+                            className="cursor-pointer"
+                        >
+                            <Check
+                                className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedFriend?.uid === friend.uid ? "opacity-100" : "opacity-0"
+                                )}
+                            />
+                            {friend.displayName}
+                        </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+          ) : (
+             <Button
+                variant="outline"
+                role="combobox"
+                onClick={() => setShowFriendList(true)}
+                className="w-full justify-between"
+              >
+              {selectedFriend
+                  ? selectedFriend.displayName
+                  : "Select a friend..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
           )}
 
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSending}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSending}>Cancel</Button>
           <Button onClick={handleSendChallenge} disabled={!selectedFriend || isSending}>
             {isSending ? (
                 <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
