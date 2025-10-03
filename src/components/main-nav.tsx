@@ -11,6 +11,7 @@ import {
   Users,
   Inbox,
   Library,
+  Trophy,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -20,7 +21,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { Separator } from "./ui/separator"
 import { Button } from "./ui/button"
 
 export function MainNav() {
@@ -64,7 +65,7 @@ export function MainNav() {
           isActive={isActive("/friends")}
           icon={<Users size={20} />}
           title="Friends"
-          description="Find and connect with users"
+          description="Find users & view leaderboard"
         />
          <NavItem
           href="/inbox"

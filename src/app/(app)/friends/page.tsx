@@ -7,11 +7,12 @@ import { useAuthContext } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserSearch, Users } from "lucide-react";
+import { UserSearch, Users, Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UserProfile } from "@/models/user";
+import { cn } from "@/lib/utils";
 
 type FoundUser = Pick<UserProfile, 'uid' | 'displayName' | 'photoURL'>;
 
@@ -198,18 +199,93 @@ function MyFriendsTab() {
     )
 }
 
+function LeaderboardTab() {
+  const { user: currentUser } = useAuthContext();
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, orderBy('points', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const userList: UserProfile[] = [];
+      snapshot.forEach((doc) => {
+        userList.push(doc.data() as UserProfile);
+      });
+      setUsers(userList);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 p-2">
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/5" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {users.map((user, index) => (
+              <li key={user.uid}>
+                <Link
+                  href={`/profile/${user.uid}`}
+                  className={cn(
+                    'flex items-center gap-4 p-2 rounded-lg hover:bg-muted',
+                    currentUser?.uid === user.uid && 'bg-primary/20 hover:bg-primary/30'
+                  )}
+                >
+                  <div className="flex items-center justify-center w-6 font-bold text-lg text-muted-foreground">
+                    {index + 1}
+                  </div>
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={user.photoURL} alt={`${user.displayName}'s avatar`} />
+                    <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium flex-1">{user.displayName}</span>
+                  <div className="text-right">
+                    <div className="font-bold text-primary">{user.points.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">points</div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function FriendsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Friends & Leaderboard</h1>
         <p className="text-muted-foreground">
-          Find new friends or see your existing connections.
+          Connect with friends and see how you rank.
         </p>
       </div>
-      <Tabs defaultValue="find" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="leaderboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="leaderboard">
+                <Trophy className="mr-2 h-4 w-4" />
+                Leaderboard
+            </TabsTrigger>
             <TabsTrigger value="find">
                 <UserSearch className="mr-2 h-4 w-4" />
                 Find Friends
@@ -219,6 +295,9 @@ export default function FriendsPage() {
                 My Friends
             </TabsTrigger>
         </TabsList>
+        <TabsContent value="leaderboard" className="mt-6">
+           <LeaderboardTab />
+        </TabsContent>
         <TabsContent value="find" className="mt-6">
            <FindFriendsTab />
         </TabsContent>

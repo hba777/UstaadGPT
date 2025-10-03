@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { useAuthContext } from "@/context/AuthContext"
 
 interface ChatbotViewProps {
   documentContent: string
@@ -21,6 +22,7 @@ interface Message {
 }
 
 export function ChatbotView({ documentContent }: ChatbotViewProps) {
+  const { user } = useAuthContext();
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -89,8 +91,8 @@ export function ChatbotView({ documentContent }: ChatbotViewProps) {
                 )}
               >
                 {message.role === "assistant" && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>AI</AvatarFallback>
+                  <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
+                    <AvatarFallback><BrainCircuit className="h-5 w-5" /></AvatarFallback>
                   </Avatar>
                 )}
                 <div
@@ -103,17 +105,18 @@ export function ChatbotView({ documentContent }: ChatbotViewProps) {
                 >
                   {message.content}
                 </div>
-                 {message.role === "user" && (
+                 {message.role === "user" && user && (
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback><User /></AvatarFallback>
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback>{user.displayName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 )}
               </div>
             ))}
              {isLoading && (
                 <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8">
-                        <AvatarFallback>AI</AvatarFallback>
+                    <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
+                        <AvatarFallback><BrainCircuit className="h-5 w-5" /></AvatarFallback>
                     </Avatar>
                     <div className="bg-muted rounded-lg p-3">
                         <LoaderCircle className="h-5 w-5 animate-spin" />
