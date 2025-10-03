@@ -149,7 +149,7 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command shouldFilter={false}>
                         <CommandInput 
-                            placeholder="Search friends..." 
+                            placeholder="Search friends..."
                             value={searchQuery}
                             onValueChange={setSearchQuery}
                         />
@@ -161,9 +161,11 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                                     key={friend.uid}
                                     value={friend.uid}
                                     onSelect={() => {
-                                        setSelectedFriend(selectedFriend?.uid === friend.uid ? null : friend);
+                                        setSelectedFriend(friend);
                                         setOpenPopover(false);
+                                        setSearchQuery("");
                                     }}
+                                    className="cursor-pointer"
                                 >
                                     <Check
                                         className={cn(
