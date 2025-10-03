@@ -10,7 +10,7 @@ import {
   Settings,
   User,
   Inbox,
-  Users,
+  Swords,
 } from "lucide-react"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -34,18 +34,30 @@ export function UserNav() {
     const { user, logout } = useAuthContext();
     const router = useRouter();
     const [pendingRequests, setPendingRequests] = useState(0);
+    const [pendingChallenges, setPendingChallenges] = useState(0);
+
 
     useEffect(() => {
       if (!user) return;
 
       const requestsRef = collection(db, "friendRequests");
-      const q = query(requestsRef, where("to", "==", user.uid), where("status", "==", "pending"));
+      const qRequests = query(requestsRef, where("to", "==", user.uid), where("status", "==", "pending"));
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
         setPendingRequests(snapshot.size);
       });
 
-      return () => unsubscribe();
+      const challengesRef = collection(db, "quizChallenges");
+      const qChallenges = query(challengesRef, where("recipientUid", "==", user.uid), where("status", "==", "pending"));
+
+      const unsubscribeChallenges = onSnapshot(qChallenges, (snapshot) => {
+        setPendingChallenges(snapshot.size);
+      });
+
+      return () => {
+        unsubscribeRequests();
+        unsubscribeChallenges();
+      }
     }, [user]);
 
     const handleLogout = async () => {
@@ -57,6 +69,8 @@ export function UserNav() {
       }
     }
 
+    const totalNotifications = pendingRequests + pendingChallenges;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,7 +79,7 @@ export function UserNav() {
             <AvatarImage src={user?.photoURL || undefined} alt="User avatar" />
             <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
-          {pendingRequests > 0 && (
+          {totalNotifications > 0 && (
             <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
           )}
         </Button>
@@ -93,6 +107,15 @@ export function UserNav() {
                 <span>Inbox</span>
                 {pendingRequests > 0 && (
                     <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">{pendingRequests}</span>
+                )}
+             </DropdownMenuItem>
+          </Link>
+           <Link href="/challenges">
+             <DropdownMenuItem>
+                <Swords className="mr-2 h-4 w-4" />
+                <span>Challenges</span>
+                {pendingChallenges > 0 && (
+                    <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">{pendingChallenges}</span>
                 )}
              </DropdownMenuItem>
           </Link>

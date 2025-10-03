@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History } from "lucide-react"
+import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords } from "lucide-react"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -21,6 +21,7 @@ import { SavedQuizzesDialog } from "./saved-quizzes-dialog"
 import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
+import { ChallengeFriendDialog } from "./challenge-friend-dialog"
 
 
 type QuizState = "not_started" | "in_progress" | "submitted"
@@ -47,6 +48,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false)
+  const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
+
 
   const { toast } = useToast()
   const { user, updateUserProfile } = useAuthContext()
@@ -251,6 +254,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
+  const canChallenge = !!book && !!activeQuizSet;
 
 
   return (
@@ -274,7 +278,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             />
         </div>
        )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button onClick={handleGenerateQuiz} disabled={isLoading} className="flex-1">
           {isLoading ? (
             <LoaderCircle className="mr-2 animate-spin" />
@@ -295,14 +299,22 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
-
+      </div>
+      <div className="flex flex-wrap gap-2">
          {book && (
-            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
+            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0} className="flex-1">
                 <History className="mr-2 h-4 w-4" />
-                View Saved
+                View Saved Sets
             </Button>
          )}
+
+         <Button variant="outline" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge} className="flex-1">
+            <Swords className="mr-2 h-4 w-4" />
+            Challenge Friend
+        </Button>
+
       </div>
+
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4">
@@ -413,6 +425,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         onLoadSet={handleLoadSet}
         onBookUpdate={handleBookUpdateFromDialog}
     />
+     <ChallengeFriendDialog
+        isOpen={isChallengeDialogOpen}
+        onClose={() => setIsChallengeDialogOpen(false)}
+        book={book}
+        quizSet={activeQuizSet}
+     />
     </>
   )
 }

@@ -11,8 +11,8 @@ import {
   Users,
   Inbox,
   Library,
-  Trophy,
   Award,
+  Swords,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -67,6 +67,13 @@ export function MainNav() {
           icon={<Award size={20} />}
           title="Achievements"
           description="View your earned badges"
+        />
+        <NavItem
+          href="/challenges"
+          isActive={isActive("/challenges")}
+          icon={<Swords size={20} />}
+          title="Challenges"
+          description="Take on quiz challenges"
         />
         <NavItem
           href="/friends"
