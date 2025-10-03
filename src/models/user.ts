@@ -12,4 +12,5 @@ export interface UserProfile {
   points: number;
   loginStreak: number;
   lastLogin: Timestamp;
+  badges?: string[];
 }

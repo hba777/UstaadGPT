@@ -12,6 +12,7 @@ import {
   Inbox,
   Library,
   Trophy,
+  Award,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -59,6 +60,13 @@ export function MainNav() {
           icon={<Library size={20} />}
           title="My Books"
           description="Review your saved books"
+        />
+         <NavItem
+          href="/achievements"
+          isActive={isActive("/achievements")}
+          icon={<Award size={20} />}
+          title="Achievements"
+          description="View your earned badges"
         />
         <NavItem
           href="/friends"

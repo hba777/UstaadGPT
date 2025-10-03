@@ -1,6 +1,7 @@
 'use client';
 
 import { auth, db } from "@/lib/firebase";
+import { awardBadge } from "@/lib/firestore";
 import { doc, getDoc, updateDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -12,6 +13,7 @@ import {
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { UserProfile } from "@/models/user";
+import { badges } from "@/lib/badges";
 
 interface StreakBonus {
     streak: number;
@@ -86,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             loginStreak: 0,
             createdAt: serverTimestamp() as Timestamp, // This will be replaced by the server
             lastLogin: null as any, // This signals a first-time login
+            badges: [],
         };
     }
     
@@ -103,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             lastLogin: serverTimestamp(),
             loginStreak: 1,
             points: (currentUser.points || 0) + 50,
+            badges: currentUser.badges || [],
         };
         // Use set with merge to safely create or update the document
         await setDoc(userDocRef, updatedData, { merge: true });
@@ -125,6 +129,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         newStreak = 1; // Streak broken, reset to 1
     }
 
+    // Badge checking logic
+    let badgeToAward: string | null = null;
+    if (newStreak === 5) badgeToAward = 'STREAK_5';
+    else if (newStreak === 10) badgeToAward = 'STREAK_10';
+    else if (newStreak === 30) badgeToAward = 'STREAK_30';
+
+    if (badgeToAward && !currentUser.badges?.includes(badgeToAward)) {
+        await awardBadge(currentUser.uid, badgeToAward);
+    }
+
     const pointsGained = newStreak >= 5 ? 250 : 50;
     const newPoints = (currentUser.points || 0) + pointsGained;
 
@@ -136,8 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updateDoc(userDocRef, updatedData);
 
     setStreakBonus({ streak: newStreak, points: pointsGained });
+
+    const updatedUserDoc = await getDoc(userDocRef);
+    
     // Return the updated profile so the UI can update immediately
-    return { ...currentUser, ...updatedData, lastLogin: new Timestamp(Math.floor(Date.now() / 1000), 0) };
+    return updatedUserDoc.data() as UserProfile;
   };
 
 

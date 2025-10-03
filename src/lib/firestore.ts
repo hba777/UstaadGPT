@@ -18,6 +18,7 @@ import {
     arrayRemove
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
+  import type { UserProfile } from '@/models/user';
 
   export interface QuizQuestion {
     questionText: string;
@@ -48,8 +49,8 @@ import {
     title: string
     flashcards: Flashcard[] // Represents the latest/active flashcards
     quiz?: QuizQuestion[] // Represents the latest/active quiz
-    savedFlashcards?: SavedFlashcardSet[]
-    savedQuizzes?: SavedQuizSet[]
+    savedFlashcards: SavedFlashcardSet[]
+    savedQuizzes: SavedQuizSet[]
     createdAt: any
     updatedAt: any
     documentContent?: string[] | string
@@ -59,7 +60,7 @@ import {
     userId: string;
     bookId?: string; // If updating existing book
     bookTitle: string;
-    documentContent?: string[] | string; // Can be string for legacy
+    documentContent?: string[] | string;
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
     saveNewQuizSet?: boolean;
@@ -74,13 +75,14 @@ import {
     documentContent,
     flashcards,
     quiz,
-    saveNewFlashcardSet,
     saveNewQuizSet,
+    saveNewFlashcardSet,
   }: SaveBookParams): Promise<Book> {
     try {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
-      
+      const userRef = doc(db, 'users', userId);
+
       if (!isUpdating) {
         // Create new book
         const newBookData: Omit<Book, 'id'> = {
@@ -95,19 +97,25 @@ import {
           updatedAt: serverTimestamp(),
         };
         await setDoc(bookRef, newBookData);
+
+        // Check for librarian badges
+        const userBooks = await getUserBooks(userId);
+        const bookCount = userBooks.length;
+        let badgeToAward: string | null = null;
+        if (bookCount === 1) badgeToAward = 'LIBRARIAN_1';
+        else if (bookCount === 5) badgeToAward = 'LIBRARIAN_5';
+        else if (bookCount === 10) badgeToAward = 'LIBRARIAN_10';
+        
+        if (badgeToAward) {
+            await awardBadge(userId, badgeToAward);
+        }
+
       } else {
         // Update existing book
         const updatePayload: any = {
           title: bookTitle,
           updatedAt: serverTimestamp(),
         };
-  
-        // Only update documentContent if it's provided
-        // This is important for when we're just saving a new quiz/flashcard set
-        // to an existing book, we don't want to overwrite the document content.
-        if (documentContent !== undefined) {
-           updatePayload.documentContent = Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []);
-        }
         
         if (flashcards) {
           updatePayload.flashcards = flashcards;
@@ -136,15 +144,8 @@ import {
       if (!savedDoc.exists()) {
         throw new Error("Failed to retrieve saved book");
       }
-      const savedData = savedDoc.data();
       
-      // If we only updated, the doc content might not be in the payload,
-      // so merge it to ensure the returned object is complete.
-      if (isUpdating && documentContent === undefined && savedData.documentContent) {
-          return { id: savedDoc.id, ...savedData } as Book;
-      }
-      
-      return { id: savedDoc.id, ...savedData } as Book;
+      return { id: savedDoc.id, ...savedDoc.data() } as Book;
 
     } catch (error) {
       console.error('Error saving book:', error);
@@ -251,5 +252,25 @@ import {
     } catch (error) {
       console.error('Error searching books:', error)
       throw new Error('Failed to search books')
+    }
+  }
+
+  // Award a badge to a user
+  export async function awardBadge(userId: string, badgeId: string): Promise<void> {
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile;
+            if (!userData.badges?.includes(badgeId)) {
+                await updateDoc(userRef, {
+                    badges: arrayUnion(badgeId)
+                });
+            }
+        }
+    } catch (error) {
+        console.error(`Error awarding badge ${badgeId} to user ${userId}:`, error);
+        // Don't throw, as this is a non-critical operation
     }
   }
