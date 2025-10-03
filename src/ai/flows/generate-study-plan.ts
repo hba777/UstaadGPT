@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const GenerateStudyPlanInputSchema = z.object({
+const GenerateStudyPlanInputSchema = z.object({
   documentContent: z.string().describe('The content of the document to base the study plan on.'),
   userGoal: z.string().describe('The user\'s specific goal, including the topic and desired completion date. e.g., "learn about supervised learning by next friday"'),
 });
@@ -23,7 +23,7 @@ const StudyDaySchema = z.object({
     topic: z.string().describe('The main topic or focus for the day.'),
 });
 
-export const GenerateStudyPlanOutputSchema = z.object({
+const GenerateStudyPlanOutputSchema = z.object({
   plan: z.array(StudyDaySchema).describe('An array of daily study plans.'),
 });
 export type GenerateStudyPlanOutput = z.infer<typeof GenerateStudyPlanOutputSchema>;
