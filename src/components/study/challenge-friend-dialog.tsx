@@ -8,7 +8,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown, Check, LoaderCircle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/models/user";
@@ -144,28 +144,31 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
-                    <CommandInput placeholder="Search friends..." />
-                    <CommandEmpty>No friend found.</CommandEmpty>
-                    <CommandGroup>
-                        {friends.map((friend) => (
-                        <CommandItem
-                            key={friend.uid}
-                            value={friend.displayName}
-                            onSelect={() => {
-                                setSelectedFriend(friend);
-                                setOpenPopover(false);
-                            }}
-                        >
-                            <Check
-                                className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedFriend?.uid === friend.uid ? "opacity-100" : "opacity-0"
-                                )}
-                            />
-                            {friend.displayName}
-                        </CommandItem>
-                        ))}
-                    </CommandGroup>
+                        <CommandInput placeholder="Search friends..." />
+                        <CommandList>
+                            <CommandEmpty>No friend found.</CommandEmpty>
+                            <CommandGroup>
+                                {friends.map((friend) => (
+                                <CommandItem
+                                    key={friend.uid}
+                                    value={friend.uid}
+                                    onSelect={(currentValue) => {
+                                        const friend = friends.find(f => f.uid === currentValue);
+                                        setSelectedFriend(friend || null);
+                                        setOpenPopover(false);
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedFriend?.uid === friend.uid ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {friend.displayName}
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
                     </Command>
                 </PopoverContent>
             </Popover>
