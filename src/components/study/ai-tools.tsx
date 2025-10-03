@@ -6,10 +6,11 @@ import {
     TabsTrigger,
   } from "@/components/ui/tabs"
   import { SummaryView } from "./summary-view"
-  import { QuizView } from "./quiz-view"
+  import { QuizView } from "../quiz-view"
   import { FlashcardView } from "./flashcard-view"
   import { ChatbotView } from "./chatbot-view"
   import type { Book } from "@/lib/firestore"
+  import { StudyPlanView } from "./study-plan-view"
   
   interface AIToolsProps {
     documentContent: string;
@@ -20,11 +21,12 @@ import {
   export function AITools({ documentContent, book, onBookUpdate }: AIToolsProps) {
     return (
       <Tabs defaultValue="summary" className="h-full flex flex-col">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="quiz">Quiz</TabsTrigger>
           <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
           <TabsTrigger value="chat">Chatbot</TabsTrigger>
+          <TabsTrigger value="plan">Study Plan</TabsTrigger>
         </TabsList>
         <TabsContent value="summary" className="flex-grow overflow-auto">
           <SummaryView documentContent={documentContent} />
@@ -45,6 +47,9 @@ import {
         </TabsContent>
         <TabsContent value="chat" className="flex-grow overflow-auto">
           <ChatbotView documentContent={documentContent} />
+        </TabsContent>
+        <TabsContent value="plan" className="flex-grow overflow-auto">
+          <StudyPlanView documentContent={documentContent} />
         </TabsContent>
       </Tabs>
     )
