@@ -17,7 +17,7 @@ import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet, 
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
-import { SavedQuizzesDialog } from "./saved-quizzes-dialog"
+import { SavedQuizzesDialog } from "@/components/study/saved-quizzes-dialog"
 import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
@@ -211,7 +211,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         
         const updatedBook = await saveBook(saveParams);
 
-        onBookUpdate(updatedBook);
+        onBookUpdate(updatedBook); // Update parent
+        setBook(updatedBook); // Update local state directly
 
         if (!currentBookId) {
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
@@ -244,7 +245,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   const handleBookUpdateFromDialog = (updatedBook: Book, deletedSetId?: string) => {
     onBookUpdate(updatedBook);
-    // If the deleted set was the one being viewed, update the view
+    setBook(updatedBook);
     if (activeQuizSet && activeQuizSet.id === deletedSetId) {
        const latestSet = updatedBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
        setActiveQuizSet(latestSet || null);
@@ -255,7 +256,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book && book.savedQuizzes && book.savedQuizzes.length > 0;
+  const canChallenge = !!book?.id && book.savedQuizzes && book.savedQuizzes.length > 0;
 
 
   return (
@@ -307,7 +308,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             </Button>
          )}
 
-         <Button variant="outline" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge} className="flex-1">
+         <Button variant="default" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge} className="flex-1">
             <Swords className="mr-2 h-4 w-4" />
             Challenge Friend
         </Button>
