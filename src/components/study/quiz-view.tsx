@@ -78,6 +78,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setUserAnswers({})
     setScore(0)
     setJustSaved(false);
+    setQuizState("in_progress");
 
     try {
       const result = await generateQuiz({ documentText: documentContent })
@@ -254,7 +255,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book && !!activeQuizSet;
+  const canChallenge = !!book && book.savedQuizzes && book.savedQuizzes.length > 0;
 
 
   return (
@@ -430,3 +431,5 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
+
+    
