@@ -1,14 +1,21 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { getUserBooks, type Book } from "@/lib/firestore"
+import { getUserBooks, type Book, type SavedFlashcardSet, type SavedQuizSet } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { Skeleton } from "../ui/skeleton"
+import type { Timestamp } from "firebase/firestore"
 
 type ChartData = {
   name: string;
   total: number;
+}
+
+const getDateFromTimestamp = (timestamp: Timestamp): Date | null => {
+    if (!timestamp) return null;
+    return timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
 }
 
 export function ProgressChart() {
@@ -17,7 +24,7 @@ export function ProgressChart() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBookData = async () => {
+    const fetchChartData = async () => {
       if (!user) return;
 
       setIsLoading(true);
@@ -32,13 +39,30 @@ export function ProgressChart() {
         const currentYear = new Date().getFullYear();
 
         books.forEach((book: Book) => {
-          if (book.createdAt?.toDate) {
-            const date = book.createdAt.toDate();
-            if (date.getFullYear() === currentYear) {
-              const month = date.getMonth();
+          // Count book creation
+          const bookCreationDate = getDateFromTimestamp(book.createdAt);
+          if (bookCreationDate && bookCreationDate.getFullYear() === currentYear) {
+            const month = bookCreationDate.getMonth();
+            monthlyData[month]++;
+          }
+
+          // Count saved flashcard sets
+          (book.savedFlashcards || []).forEach((set: SavedFlashcardSet) => {
+            const setCreationDate = getDateFromTimestamp(set.createdAt);
+            if(setCreationDate && setCreationDate.getFullYear() === currentYear) {
+              const month = setCreationDate.getMonth();
               monthlyData[month]++;
             }
-          }
+          });
+
+          // Count saved quiz sets
+          (book.savedQuizzes || []).forEach((set: SavedQuizSet) => {
+             const setCreationDate = getDateFromTimestamp(set.createdAt);
+            if(setCreationDate && setCreationDate.getFullYear() === currentYear) {
+              const month = setCreationDate.getMonth();
+              monthlyData[month]++;
+            }
+          });
         });
         
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -55,7 +79,7 @@ export function ProgressChart() {
       }
     };
 
-    fetchBookData();
+    fetchChartData();
   }, [user]);
 
   if (isLoading) {
@@ -90,6 +114,7 @@ export function ProgressChart() {
           labelStyle={{
             color: "hsl(var(--foreground))"
           }}
+          formatter={(value: number) => [value, 'Activities']}
         />
         <Bar
           dataKey="total"
