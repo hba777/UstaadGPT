@@ -15,7 +15,8 @@ import {
     Timestamp,
     setDoc,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    increment
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
   import type { UserProfile } from '@/models/user';
@@ -81,7 +82,8 @@ import {
     try {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
-      const userRef = doc(db, 'users', userId);
+      
+      let finalBookData: Book | null = null;
 
       if (!isUpdating) {
         // Create new book
@@ -89,18 +91,21 @@ import {
           userId,
           title: bookTitle,
           documentContent: Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []),
-          flashcards: [],
-          quiz: [],
-          savedFlashcards: [],
-          savedQuizzes: [],
+          flashcards: flashcards || [],
+          quiz: quiz || [],
+          savedFlashcards: flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [],
+          savedQuizzes: quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
         await setDoc(bookRef, newBookData);
 
+        const savedDoc = await getDoc(bookRef);
+        finalBookData = { id: savedDoc.id, ...savedDoc.data() } as Book;
+
         // Check for librarian badges
         const userBooks = await getUserBooks(userId);
-        const bookCount = userBooks.length;
+        const bookCount = userBooks.length; // This already includes the new book because we fetch after creation
         let badgeToAward: string | null = null;
         if (bookCount === 1) badgeToAward = 'LIBRARIAN_1';
         else if (bookCount === 5) badgeToAward = 'LIBRARIAN_5';
@@ -117,35 +122,32 @@ import {
           updatedAt: serverTimestamp(),
         };
         
-        if (flashcards) {
-          updatePayload.flashcards = flashcards;
-          if (saveNewFlashcardSet) {
-            updatePayload.savedFlashcards = arrayUnion({
-              id: crypto.randomUUID(),
-              createdAt: new Date(),
-              cards: flashcards,
-            });
-          }
+        if (saveNewFlashcardSet && flashcards) {
+          updatePayload.savedFlashcards = arrayUnion({
+            id: crypto.randomUUID(),
+            createdAt: new Date(),
+            cards: flashcards,
+          });
         }
-        if (quiz) {
-          updatePayload.quiz = quiz;
-           if (saveNewQuizSet) {
-            updatePayload.savedQuizzes = arrayUnion({
-              id: crypto.randomUUID(),
-              createdAt: new Date(),
-              questions: quiz,
-            });
-          }
+        
+        if (saveNewQuizSet && quiz) {
+          updatePayload.savedQuizzes = arrayUnion({
+            id: crypto.randomUUID(),
+            createdAt: new Date(),
+            questions: quiz,
+          });
         }
+        
         await updateDoc(bookRef, updatePayload);
+        const updatedDoc = await getDoc(bookRef);
+        finalBookData = { id: updatedDoc.id, ...updatedDoc.data() } as Book;
       }
 
-      const savedDoc = await getDoc(bookRef);
-      if (!savedDoc.exists()) {
+      if (!finalBookData) {
         throw new Error("Failed to retrieve saved book");
       }
       
-      return { id: savedDoc.id, ...savedDoc.data() } as Book;
+      return finalBookData;
 
     } catch (error) {
       console.error('Error saving book:', error);
@@ -255,7 +257,7 @@ import {
     }
   }
 
-  // Award a badge to a user
+  // Award a badge and points to a user
   export async function awardBadge(userId: string, badgeId: string): Promise<void> {
     try {
         const userRef = doc(db, 'users', userId);
@@ -265,7 +267,8 @@ import {
             const userData = userDoc.data() as UserProfile;
             if (!userData.badges?.includes(badgeId)) {
                 await updateDoc(userRef, {
-                    badges: arrayUnion(badgeId)
+                    badges: arrayUnion(badgeId),
+                    points: increment(100) // Award 100 points for any new badge
                 });
             }
         }

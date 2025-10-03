@@ -21,6 +21,8 @@ import { saveBook, type Book, type SavedFlashcardSet } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext" 
 import { useRouter } from "next/navigation"
 import { SavedFlashcardsDialog } from "./saved-flashcards-dialog"
+import { doc, updateDoc, increment } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 interface FlashcardViewProps {
   documentContent: string
@@ -67,6 +69,10 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
       setGeneratedFlashcards(result.flashcards)
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { points: increment(10) });
+      }
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast({
@@ -112,15 +118,24 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     setIsSaving(true)
     
     try {
-      const saveParams = {
+      const saveParams: {
+        userId: string;
+        bookId?: string;
+        bookTitle: string;
+        flashcards: FlashcardType[];
+        saveNewFlashcardSet: boolean;
+        documentContent?: string;
+      } = {
         userId: user.uid,
         bookId: currentBookId,
         bookTitle: bookTitle.trim(),
         flashcards: cardsToSave,
         saveNewFlashcardSet: true,
-        // Only pass documentContent if it's a new book
-        ...(!currentBookId && { documentContent: documentContent })
       };
+
+       if (!currentBookId) {
+          saveParams.documentContent = documentContent;
+      }
       
       const updatedBook = await saveBook(saveParams);
       

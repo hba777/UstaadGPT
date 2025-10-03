@@ -13,11 +13,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { saveBook, type QuizQuestion, type Book, type SavedQuizSet } from "@/lib/firestore"
+import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet, getBookById } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { SavedQuizzesDialog } from "./saved-quizzes-dialog"
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import type { UserProfile } from "@/models/user"
+
 
 type QuizState = "not_started" | "in_progress" | "submitted"
 
@@ -45,7 +49,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false)
 
   const { toast } = useToast()
-  const { user } = useAuthContext()
+  const { user, updateUserProfile } = useAuthContext()
   const router = useRouter()
 
   useEffect(() => {
@@ -87,6 +91,10 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       }
       setGeneratedQuiz(result.quiz)
       setQuizState("in_progress")
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { points: increment(10) });
+      }
     } catch (error) {
       console.error("Error generating quiz:", error)
       toast({
@@ -109,15 +117,49 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
         newScore++
       }
     })
+    
     setScore(newScore)
     setQuizState("submitted")
+
+    const pointsEarned = newScore * 10; // 10 points per correct answer
+
+    if(user) {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, { points: increment(pointsEarned) });
+
+      if (newScore === quizToDisplay.length && quizToDisplay.length > 0) {
+          await awardBadge(user.uid, 'QUIZ_MASTER_1');
+          
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+              const userData = userDoc.data() as UserProfile;
+              const perfectScoreCount = userData.badges?.filter(b => b === 'QUIZ_MASTER_1' || b === 'QUIZ_MASTER_5').length || 0;
+               if (perfectScoreCount >= 4) { // 4 because we award the 5th here.
+                  await awardBadge(user.uid, 'QUIZ_MASTER_5');
+              }
+              const updatedUser = (await getDoc(userRef)).data() as UserProfile;
+              updateUserProfile(updatedUser);
+          }
+          toast({
+              title: "Badge Unlocked!",
+              description: "You earned the 'Perfect Score' badge and 100 bonus points!",
+          })
+      } else {
+        toast({
+          title: "Quiz Submitted!",
+          description: `You earned ${pointsEarned} points.`,
+        })
+      }
+      const updatedUser = (await getDoc(userRef)).data() as UserProfile;
+      updateUserProfile(updatedUser);
+    }
   }
 
   const handleRetake = () => {
@@ -136,22 +178,33 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         return;
     }
     
-    if (quizToDisplay.length === 0) {
-        toast({ variant: "destructive", title: "Generate a quiz before saving." });
+    const quizToSave = generatedQuiz;
+    if (!quizToSave || quizToSave.length === 0) {
+        toast({ variant: "destructive", title: "Generate a new quiz before saving." });
         return;
     }
 
     setIsSaving(true);
     try {
-        const saveParams = {
+        const saveParams: {
+          userId: string;
+          bookId?: string;
+          bookTitle: string;
+          quiz: QuizQuestion[];
+          saveNewQuizSet: boolean;
+          documentContent?: string;
+        } = {
             userId: user.uid,
             bookId: currentBookId,
             bookTitle: bookTitle.trim(),
-            quiz: quizToDisplay,
+            quiz: quizToSave,
             saveNewQuizSet: true,
-             // Only pass documentContent if it's a new book
-            ...(!currentBookId && { documentContent: documentContent })
         };
+
+        if (!currentBookId) {
+            saveParams.documentContent = documentContent;
+        }
+        
         const updatedBook = await saveBook(saveParams);
 
         onBookUpdate(updatedBook);
@@ -197,7 +250,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
-  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || quizToDisplay.length === 0 || !bookTitle.trim();
+  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
 
 
   return (
