@@ -299,8 +299,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
-      </div>
-      <div className="flex flex-wrap gap-2">
          {book && (
             <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0} className="flex-1">
                 <History className="mr-2 h-4 w-4" />
