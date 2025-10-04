@@ -1,4 +1,3 @@
-
 // lib/firestore.ts
 import { 
     doc, 
@@ -19,7 +18,7 @@ import {
     increment
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
-  import type { UserProfile } from '@/models/user';
+  import type { UserProfile, QuizHistory } from '@/models/user';
 
   export interface QuizQuestion {
     questionText: string;
@@ -304,5 +303,30 @@ import {
     } catch (error) {
       console.error('Error logging quiz attempt:', error);
       // We don't throw here as it's a background logging task and shouldn't block the user.
+    }
+  }
+
+  // Get all quiz attempts for a user and join with book titles
+  export async function getQuizHistory(userId: string): Promise<QuizHistory[]> {
+    try {
+      const attemptsCollection = collection(db, 'quizAttempts');
+      const q = query(attemptsCollection, where('userId', '==', userId), orderBy('attemptedAt', 'desc'));
+      const attemptsSnapshot = await getDocs(q);
+      const attempts = attemptsSnapshot.docs.map(doc => doc.data() as QuizAttempt);
+
+      // Create a map of bookId -> bookTitle for efficient lookup
+      const userBooks = await getUserBooks(userId);
+      const bookTitles = new Map(userBooks.map(book => [book.id, book.title]));
+
+      const quizHistory: QuizHistory[] = attempts.map(attempt => ({
+        ...attempt,
+        bookTitle: bookTitles.get(attempt.bookId) || 'Unknown Book',
+      }));
+
+      return quizHistory;
+
+    } catch (error) {
+      console.error('Error fetching quiz history:', error);
+      throw new Error('Failed to fetch quiz history.');
     }
   }

@@ -12,6 +12,7 @@ import {
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { ProgressChart } from '@/components/dashboard/progress-chart'
 import { useAuthContext } from '@/context/AuthContext';
+import { WeaknessAnalysis } from '@/components/dashboard/weakness-analysis';
 
 export default function DashboardPage() {
   const { user } = useAuthContext();
@@ -44,15 +45,19 @@ export default function DashboardPage() {
           icon={<Award className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Learning Activity</CardTitle>
-          <CardDescription>A monthly overview of your created books, quizzes, and flashcards.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProgressChart />
-        </CardContent>
-      </Card>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <WeaknessAnalysis />
+        <Card>
+          <CardHeader>
+            <CardTitle>Learning Activity</CardTitle>
+            <CardDescription>A monthly overview of your created books, quizzes, and flashcards.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProgressChart />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
