@@ -120,35 +120,34 @@ function NavItem({
   return (
     <SidebarMenuItem>
       <Link href={href} passHref>
-        <Button
-          variant={isActive ? "secondary" : "ghost"}
-          className={cn("h-auto w-full justify-start p-3 relative")}
-          asChild
+        <div
+          className={cn(
+            "h-auto w-full justify-start p-3 relative rounded-md flex items-center group",
+            isActive ? "bg-secondary" : "hover:bg-accent/50"
+          )}
         >
-          <div className="flex items-center w-full">
-            <div
-              className={cn(
-                "mr-4 flex h-10 w-10 items-center justify-center rounded-lg",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted-foreground/20 text-muted-foreground"
-              )}
-            >
-              {icon}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-semibold">{title}</span>
-              {description && (
-                <span className="text-xs text-muted-foreground">
-                  {description}
-                </span>
-              )}
-            </div>
-            {isActive && (
-                 <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
+          <div
+            className={cn(
+              "mr-4 flex h-10 w-10 items-center justify-center rounded-lg",
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground group-hover:bg-accent group-hover:text-accent-foreground"
+            )}
+          >
+            {icon}
+          </div>
+          <div className="flex flex-col items-start">
+            <span className={cn("font-semibold", isActive ? "text-secondary-foreground" : "group-hover:text-accent-foreground")}>{title}</span>
+            {description && (
+              <span className={cn("text-xs", isActive ? "text-secondary-foreground/80" : "text-muted-foreground group-hover:text-accent-foreground/80")}>
+                {description}
+              </span>
             )}
           </div>
-        </Button>
+          {isActive && (
+                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
+          )}
+        </div>
       </Link>
     </SidebarMenuItem>
   )
