@@ -48,20 +48,20 @@ export function StreakAnimation() {
         </h2>
         
         <div className="my-6 flex items-center justify-center gap-4 animate-bounce">
-            <Flame className="w-16 h-16 text-orange-400" />
+            <Flame className="w-16 h-16 text-accent" />
             <span className="text-6xl font-bold text-foreground">{streakBonus.streak}</span>
              <span className="text-2xl font-semibold text-muted-foreground self-end pb-2">Day{streakBonus.streak > 1 ? 's' : ''}</span>
         </div>
 
         <div className="flex items-center justify-center gap-2">
-            <Award className="w-8 h-8 text-yellow-500" />
+            <Award className="w-8 h-8 text-accent" />
             <p className="text-xl font-semibold">You earned <span className="text-primary font-bold">{streakBonus.points}</span> points!</p>
         </div>
 
         {[...Array(10)].map((_, i) => (
             <Star
                 key={i}
-                className="absolute text-yellow-400 animate-ping"
+                className="absolute text-accent animate-ping"
                 style={{
                     width: `${Math.random() * 15 + 5}px`,
                     top: `${Math.random() * 100}%`,

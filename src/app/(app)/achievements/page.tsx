@@ -11,15 +11,15 @@ import { Progress } from "@/components/ui/progress";
 function BadgeCard({ badge, isEarned }: { badge: Badge, isEarned: boolean }) {
     const Icon = badge.icon;
     const categoryColor = 
-        badge.category === 'Streak' ? 'text-orange-500 bg-orange-500/10' :
-        badge.category === 'Librarian' ? 'text-blue-500 bg-blue-500/10' :
-        'text-yellow-500 bg-yellow-500/10';
+        badge.category === 'Streak' ? 'text-accent bg-accent/10' :
+        badge.category === 'Librarian' ? 'text-primary bg-primary/10' :
+        'text-secondary bg-secondary/10';
 
     return (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Card className={cn("text-center transition-all", isEarned ? 'border-primary/50 bg-primary/5' : 'bg-muted/50')}>
+                    <Card className={cn("text-center transition-all", isEarned ? 'border-accent/50 bg-accent/5' : 'bg-muted/50')}>
                         <CardContent className="p-6">
                             <div className={cn("mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4", categoryColor, !isEarned && 'grayscale opacity-50')}>
                                 <Icon className="h-8 w-8" />

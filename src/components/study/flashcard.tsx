@@ -59,7 +59,7 @@ export function Flashcard({ front, back }: FlashcardProps) {
             <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-primary/20 p-6 text-center [backface-visibility:hidden]">
             <p className="text-lg font-semibold text-card-foreground">{front}</p>
             </div>
-            <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-accent p-6 text-center text-accent-foreground [transform:rotateY(180deg)] [backface-visibility:hidden]">
+            <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-secondary p-6 text-center text-secondary-foreground [transform:rotateY(180deg)] [backface-visibility:hidden]">
             <p className="text-md">{back}</p>
             </div>
         </div>

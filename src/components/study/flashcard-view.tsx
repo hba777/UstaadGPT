@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { BookCopy, LoaderCircle, Save, Check, History } from "lucide-react"
-import type { GenerateFlashcardsOutput, Flashcard as FlashcardType } from "@/ai/flows/generate-flashcards"
+import type { Flashcard as FlashcardType } from "@/ai/flows/generate-flashcards"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,7 +37,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [justSaved, setJustSaved] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false);
@@ -54,7 +53,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       setGeneratedFlashcards(null);
       setBookTitle(initialBook.title);
       setCurrentBookId(initialBook.id);
-      setJustSaved(false);
     }
   }, [initialBook]);
   
@@ -64,7 +62,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
     setIsLoading(true)
     setGeneratedFlashcards(null)
     setActiveFlashcardSet(null);
-    setJustSaved(false);
     
     try {
       const result = await generateFlashcards({ documentContent: documentContent })
@@ -140,12 +137,17 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
       const updatedBook = await saveBook(saveParams);
       
       onBookUpdate(updatedBook);
+      setBook(updatedBook);
+      setCurrentBookId(updatedBook.id);
+      const newSet = updatedBook.savedFlashcards.slice(-1)[0];
+      setActiveFlashcardSet(newSet);
+      setGeneratedFlashcards(null);
+
       
       if (!currentBookId) {
         router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
       }
       
-      setJustSaved(true);
       toast({
         title: "Success",
         description: `New flashcard set saved to "${bookTitle}".`,
@@ -165,7 +167,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   const handleLoadSet = (set: SavedFlashcardSet) => {
     setActiveFlashcardSet(set);
     setGeneratedFlashcards(null);
-    setJustSaved(false);
     setIsSavedSetsOpen(false);
     toast({
         title: "Flashcard Set Loaded",
@@ -175,6 +176,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
 
   const handleBookUpdateFromDialog = (updatedBook: Book, deletedSetId?: string) => {
     onBookUpdate(updatedBook);
+    setBook(updatedBook);
     // If the deleted set was the one being viewed, update the view
     if (activeFlashcardSet && activeFlashcardSet.id === deletedSetId) {
        const latestSet = updatedBook.savedFlashcards?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
@@ -183,7 +185,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
   }
   
   const isNewUnsavedContent = !!generatedFlashcards;
-  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
 
   return (
     <>
@@ -202,7 +203,6 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
                   value={bookTitle}
                   onChange={(e) => {
                     setBookTitle(e.target.value)
-                    setJustSaved(false)
                   }}
                   className="mt-1"
                 />
@@ -222,7 +222,7 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
             {isNewUnsavedContent && (
               <Button 
                 onClick={handleSaveFlashcards} 
-                disabled={isSaveButtonDisabled}
+                disabled={isSaving || !bookTitle.trim()}
                 variant={"default"}
                 className="flex-1"
               >
@@ -231,12 +231,12 @@ export function FlashcardView({ documentContent, book: initialBook, onBookUpdate
                 ) : (
                   <Save className="mr-2" />
                 )}
-                {justSaved ? "Saved" : "Save as New Set"}
+                Save as New Set
               </Button>
             )}
 
-            {book && (
-                <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedFlashcards || book.savedFlashcards.length === 0}>
+            {book && book.savedFlashcards && book.savedFlashcards.length > 0 && (
+                <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
                     <History className="mr-2 h-4 w-4" />
                     View Saved
                 </Button>

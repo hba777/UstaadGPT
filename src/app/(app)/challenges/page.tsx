@@ -27,7 +27,7 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
     const isLoser = challenge.winnerUid !== null && challenge.winnerUid !== 'draw' && challenge.winnerUid !== user?.uid;
     const isDraw = challenge.winnerUid === 'draw';
 
-    const handleTakeQuiz = () => {
+    const handleNavigateToChallenge = () => {
         router.push(`/challenges/${challenge.id}`);
     }
 
@@ -48,22 +48,22 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
                     <CardTitle className="text-lg">{challenge.bookTitle}</CardTitle>
                     {challenge.status === 'completed' && (
                         <div className={cn("flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full", 
-                            isWinner && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                            isLoser && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-                            isDraw && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                            isWinner && "bg-accent/10 text-accent-foreground",
+                            isLoser && "bg-destructive/10 text-destructive-foreground",
+                            isDraw && "bg-primary/10 text-primary-foreground",
                         )}>
                             <Trophy className="h-4 w-4"/>
                             {isWinner ? 'You Won' : isLoser ? 'You Lost' : 'Draw'}
                         </div>
                     )}
                      {challenge.status === 'pending' && (
-                        <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                        <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground">
                            <Clock className="h-4 w-4"/>
                             Pending
                         </div>
                     )}
                      {challenge.status === 'in-progress' && (
-                        <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-primary/10 text-primary-foreground">
                            <Swords className="h-4 w-4"/>
                             In Progress
                         </div>
@@ -96,7 +96,7 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
                     </div>
 
                     {!hasCurrentUserPlayed && (challenge.status === 'pending' || challenge.status === 'in-progress') && (
-                        <Button onClick={handleTakeQuiz}>
+                        <Button onClick={handleNavigateToChallenge}>
                             {type === 'incoming' ? "Accept & Play" : "Take Quiz"} <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     )}

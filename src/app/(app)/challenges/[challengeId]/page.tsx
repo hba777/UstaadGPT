@@ -201,10 +201,10 @@ export default function TakeChallengePage() {
                 <ScrollArea className="h-[calc(100vh-20rem)] pr-4">
                      <div className="space-y-6">
                         {quizState === "submitted" && (
-                            <Card className="text-center bg-primary/10 border-primary/50">
+                            <Card className="text-center bg-accent/10 border-accent/50">
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-center gap-2">
-                                        <Award className="text-yellow-500" />
+                                        <Award className="text-accent" />
                                         Your Score
                                     </CardTitle>
                                     <CardDescription>Results will be available once both players have finished.</CardDescription>

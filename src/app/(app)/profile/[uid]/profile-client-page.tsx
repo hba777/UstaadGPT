@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserPlus, UserCheck, Clock, Inbox, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Badge as BadgeType, badges as allBadges } from '@/lib/badges';
+import { allBadges } from '@/lib/badges';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +28,7 @@ function EarnedBadges({ user }: { user: UserProfile }) {
         )
     }
     
-    const earnedBadges = user.badges.map(badgeId => allBadges[badgeId]).filter(Boolean);
+    const earnedBadges = user.badges.map(badgeId => allBadges.find(b => b.id === badgeId)).filter(Boolean);
 
     return (
         <TooltipProvider>
@@ -36,16 +36,14 @@ function EarnedBadges({ user }: { user: UserProfile }) {
                 <h3 className="text-sm font-semibold text-muted-foreground text-center mb-4">BADGES</h3>
                 <div className="flex flex-wrap gap-4 justify-center">
                     {earnedBadges.map((badge) => {
+                        if(!badge) return null;
                         const Icon = badge.icon;
                         return (
                             <Tooltip key={badge.id}>
                                 <TooltipTrigger asChild>
                                     <div className="flex flex-col items-center gap-1">
                                         <div className={cn(
-                                            "flex items-center justify-center h-12 w-12 rounded-full bg-primary/20",
-                                            badge.category === 'Streak' && 'text-orange-500',
-                                            badge.category === 'Librarian' && 'text-blue-500',
-                                            badge.category === 'Quiz' && 'text-yellow-500',
+                                            "flex items-center justify-center h-12 w-12 rounded-full bg-accent/20 text-accent",
                                         )}>
                                             <Icon className="h-7 w-7" />
                                         </div>
@@ -233,7 +231,7 @@ export default function ProfileClientPage({ uid }: { uid: string }) {
           </Avatar>
           <CardTitle className="text-3xl">{profileUser.displayName}</CardTitle>
           <CardDescription className="flex items-center gap-2 text-base">
-            <Award className="h-5 w-5 text-yellow-500" />
+            <Award className="h-5 w-5 text-accent" />
             {profileUser.points.toLocaleString()} Points
           </CardDescription>
         </CardHeader>
