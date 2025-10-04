@@ -107,13 +107,23 @@ function ChallengeList({ type }: { type: 'incoming' | 'sent' }) {
 
         const q = query(
             challengesRef,
-            where(field, '==', user.uid),
-            orderBy('createdAt', 'desc')
+            where(field, '==', user.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const challengeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChallengeWithId));
+            
+            // Sort client-side
+            challengeList.sort((a, b) => {
+                const dateA = a.createdAt?.seconds ? a.createdAt.seconds : 0;
+                const dateB = b.createdAt?.seconds ? b.createdAt.seconds : 0;
+                return dateB - dateA;
+            });
+            
             setChallenges(challengeList);
+            setIsLoading(false);
+        }, (error) => {
+            console.error(`Error fetching ${type} challenges:`, error);
             setIsLoading(false);
         });
 

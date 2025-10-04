@@ -213,15 +213,21 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         
         onBookUpdate(updatedBook);
         setBook(updatedBook);
+        setCurrentBookId(updatedBook.id);
+        
+        // After saving, set the new quiz as the active one
+        const newSet = updatedBook.savedQuizzes.slice(-1)[0];
+        setActiveQuizSet(newSet);
+        setGeneratedQuiz(null);
 
         if (!currentBookId) {
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
-        setJustSaved(true);
+        setJustSaved(true); // Keep track that it was just saved
         toast({
             title: "Quiz Saved!",
-            description: `A new quiz set has been saved to "${bookTitle}".`,
+            description: `A new quiz set has been saved to "${bookTitle}". You can now challenge a friend.`,
         });
     } catch (error) {
         console.error("Error saving quiz:", error);
@@ -254,14 +260,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleChallengeClick = () => {
-    const isReadyForChallenge = !!book?.id && (!!activeQuizSet || justSaved);
-    if (isReadyForChallenge) {
+    // A challenge is possible if there's a book and at least one saved quiz.
+    if (book?.savedQuizzes && book.savedQuizzes.length > 0) {
         setIsChallengeDialogOpen(true);
     } else {
         toast({
             variant: "default",
             title: "Save Quiz First",
-            description: "Please save this quiz as a new set before challenging a friend.",
+            description: "You must save a quiz to this book before you can challenge a friend.",
         });
     }
   };
@@ -269,6 +275,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
+  const canChallenge = !!book?.id && !!book.savedQuizzes && book.savedQuizzes.length > 0;
    
   return (
     <>
@@ -305,7 +312,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             <Button
                 onClick={handleSaveQuiz}
                 disabled={isSaveButtonDisabled}
-                variant={"default"}
             >
                 {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {justSaved ? "Saved" : "Save as New Set"}
@@ -315,6 +321,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
               <History className="mr-2 h-4 w-4" />
               View Saved
+          </Button>
+         )}
+         {book?.id && (
+          <Button variant="outline" onClick={handleChallengeClick} disabled={!canChallenge}>
+            <Swords className="mr-2 h-4 w-4" />
+            Challenge Friend
           </Button>
          )}
       </div>
@@ -412,15 +424,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 ))}
 
                 {quizState === "in_progress" && (
-                    <div className="flex gap-2">
-                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
-                            Submit Quiz
-                        </Button>
-                         <Button variant="outline" onClick={handleChallengeClick} className="w-full">
-                            <Swords className="mr-2 h-4 w-4" />
-                            Challenge Friend
-                        </Button>
-                    </div>
+                    <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
+                        Submit Quiz
+                    </Button>
                 )}
              </div>
           ) : null}
