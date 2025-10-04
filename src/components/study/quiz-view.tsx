@@ -256,9 +256,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book?.id && book.savedQuizzes && book.savedQuizzes.length > 0;
-
-
+  const canChallenge = !!book?.id && !!book.savedQuizzes && book.savedQuizzes.length > 0;
+   
   return (
     <>
     <div className="flex flex-col gap-4 h-full">
@@ -302,16 +301,17 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             </Button>
         )}
          {book && (
+          <>
             <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
                 <History className="mr-2 h-4 w-4" />
                 View Saved
             </Button>
+            <Button variant="default" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge}>
+                <Swords className="mr-2 h-4 w-4" />
+                Challenge Friend
+            </Button>
+          </>
          )}
-
-         <Button variant="outline" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge}>
-            <Swords className="mr-2 h-4 w-4" />
-            Challenge Friend
-        </Button>
       </div>
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
