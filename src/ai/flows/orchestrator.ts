@@ -11,7 +11,7 @@
  * - OrchestratorOutput - The output schema, defining the specific task for a sub-agent to perform.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '../genkit';
 import { z } from 'genkit';
 
 // Schema for a user's quiz attempt history
@@ -106,7 +106,7 @@ const orchestratorFlow = ai.defineFlow(
     inputSchema: OrchestratorInputSchema,
     outputSchema: OrchestratorOutputSchema,
   },
-  async (input) => {
+  async (input: OrchestratorInput) => {
     // In a real-world scenario, you might add more logic here to pre-process data.
     // For now, we pass the data directly to the prompt.
     const { output } = await prompt(input);
