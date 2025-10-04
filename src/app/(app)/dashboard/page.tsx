@@ -14,9 +14,18 @@ import { ProgressChart } from '@/components/dashboard/progress-chart'
 import { useAuthContext } from '@/context/AuthContext';
 import { WeaknessAnalysis } from '@/components/dashboard/weakness-analysis';
 import { RecommendationCard } from '@/components/dashboard/recommendation-card';
+import { useEffect, useState } from 'react';
+import { getUserBooks } from '@/lib/firestore';
 
 export default function DashboardPage() {
   const { user } = useAuthContext();
+  const [booksCount, setBooksCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.uid) {
+      getUserBooks(user.uid).then(books => setBooksCount(books.length));
+    }
+  }, [user]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -37,9 +46,9 @@ export default function DashboardPage() {
           icon={<Flame className="h-4 w-4 text-muted-foreground" />}
         />
         <StatsCard
-          title="Courses Completed"
-          value="4"
-          description="+1 from last month"
+          title="Books Created"
+          value={booksCount.toString()}
+          description="Total number of books in your library."
           icon={<BookCheck className="h-4 w-4 text-muted-foreground" />}
         />
         <StatsCard

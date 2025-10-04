@@ -57,8 +57,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const { user, updateUserProfile } = useAuthContext()
   const router = useRouter()
 
-  const canChallenge = !!book && !!activeQuizSet;
-
   useEffect(() => {
     setBook(initialBook);
     if (initialBook) {
@@ -139,7 +137,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
     const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
 
-    if (user && book && activeQuizSet) {
+    if (user && book?.id && activeQuizSet) {
       await logQuizAttempt({
         userId: user.uid,
         bookId: book.id,
@@ -153,20 +151,22 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
     if(user) {
       const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { points: increment(pointsEarned) });
+      
+      const isPerfectScore = newScore === quizToDisplay.length && quizToDisplay.length > 0;
+      
+      let updateData: any = { points: increment(pointsEarned) };
+      if (isPerfectScore) {
+          updateData.perfectScoreCount = increment(1);
+      }
+      await updateDoc(userRef, updateData);
 
-      if (newScore === quizToDisplay.length && quizToDisplay.length > 0) {
+      const updatedUserDoc = await getDoc(userRef);
+      const updatedUserData = updatedUserDoc.data() as UserProfile;
+
+      if (isPerfectScore) {
           await awardBadge(user.uid, 'QUIZ_MASTER_1');
-          
-          const userDoc = await getDoc(userRef);
-          if (userDoc.exists()) {
-              const userData = userDoc.data() as UserProfile;
-              const perfectScoreCount = userData.badges?.filter(b => b === 'QUIZ_MASTER_1' || b === 'QUIZ_MASTER_5').length || 0;
-               if (perfectScoreCount >= 4) { // 4 because we award the 5th here.
-                  await awardBadge(user.uid, 'QUIZ_MASTER_5');
-              }
-              const updatedUser = (await getDoc(userRef)).data() as UserProfile;
-              updateUserProfile(updatedUser);
+           if ((updatedUserData.perfectScoreCount || 0) >= 5) {
+              await awardBadge(user.uid, 'QUIZ_MASTER_5');
           }
           toast({
               title: "Badge Unlocked!",
@@ -178,8 +178,10 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           description: `You earned ${pointsEarned} points.`,
         })
       }
-      const updatedUser = (await getDoc(userRef)).data() as UserProfile;
-      updateUserProfile(updatedUser);
+      
+      // Fetch the final state of the user to update context
+      const finalUserDoc = await getDoc(userRef);
+      updateUserProfile(finalUserDoc.data() as UserProfile);
     }
   }
 
@@ -286,6 +288,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
+  const canChallenge = !!book && !!activeQuizSet && !generatedQuiz;
    
   return (
     <>
@@ -431,7 +434,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                         <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
                             Submit Quiz
                         </Button>
-                        <Button onClick={handleChallengeClick} variant="secondary">
+                        <Button 
+                            onClick={handleChallengeClick} 
+                            variant="secondary"
+                            disabled={!canChallenge}
+                            title={!canChallenge ? "Save this quiz as a new set to challenge a friend." : "Challenge a friend"}
+                        >
                            <Swords className="mr-2 h-4 w-4" />
                             Challenge Friend
                         </Button>
@@ -458,5 +466,3 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
-
-    

@@ -1,3 +1,4 @@
+
 // src/models/user.ts
 
 import type { Timestamp } from "firebase/firestore";
@@ -14,6 +15,7 @@ export interface UserProfile {
   loginStreak: number;
   lastLogin: Timestamp;
   badges?: string[];
+  perfectScoreCount?: number;
 }
 
 export interface QuizHistory extends QuizAttempt {
