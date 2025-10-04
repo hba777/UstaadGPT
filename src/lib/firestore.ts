@@ -1,4 +1,3 @@
-
 // lib/firestore.ts
 import { 
     doc, 
@@ -95,32 +94,35 @@ import {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
       
-      let finalBookData: Book | null = null;
       const now = new Date();
+      const newTimestamp = Timestamp.fromDate(now);
       const defaultQuizSetName = `Quiz - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
 
-
       if (!isUpdating) {
-        // Create new book
+        // --- Create New Book ---
+        const newFlashcardSet = flashcards ? { id: crypto.randomUUID(), createdAt: newTimestamp, cards: flashcards } : null;
+        const newQuizSet = quiz ? { id: crypto.randomUUID(), name: quizSetName || defaultQuizSetName, createdAt: newTimestamp, questions: quiz } : null;
+
         const newBookData: Omit<Book, 'id'> = {
           userId,
           title: bookTitle,
           documentContent: Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []),
           flashcards: flashcards || [],
           quiz: quiz || [],
-          savedFlashcards: flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [],
-          savedQuizzes: quiz ? [{ id: crypto.randomUUID(), name: quizSetName || defaultQuizSetName, createdAt: new Date() as any, questions: quiz }] : [],
+          savedFlashcards: newFlashcardSet ? [newFlashcardSet] : [],
+          savedQuizzes: newQuizSet ? [newQuizSet] : [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
+
         await setDoc(bookRef, newBookData);
 
         const savedDoc = await getDoc(bookRef);
-        finalBookData = { id: savedDoc.id, ...savedDoc.data() } as Book;
+        const finalBookData = { id: savedDoc.id, ...savedDoc.data() } as Book;
 
         // Check for librarian badges
         const userBooks = await getUserBooks(userId);
-        const bookCount = userBooks.length; // This already includes the new book because we fetch after creation
+        const bookCount = userBooks.length;
         let badgeToAward: string | null = null;
         if (bookCount === 1) badgeToAward = 'LIBRARIAN_1';
         else if (bookCount === 5) badgeToAward = 'LIBRARIAN_5';
@@ -129,41 +131,42 @@ import {
         if (badgeToAward) {
             await awardBadge(userId, badgeToAward);
         }
+        return finalBookData;
 
       } else {
-        // Update existing book
+        // --- Update Existing Book ---
         const updatePayload: any = {
           title: bookTitle,
           updatedAt: serverTimestamp(),
         };
+
+        let newSetId: string | null = null;
         
         if (saveNewFlashcardSet && flashcards) {
-          updatePayload.savedFlashcards = arrayUnion({
-            id: crypto.randomUUID(),
-            createdAt: new Date(),
-            cards: flashcards,
-          });
+          const newFlashSet = { id: crypto.randomUUID(), createdAt: newTimestamp, cards: flashcards };
+          updatePayload.savedFlashcards = arrayUnion(newFlashSet);
         }
         
         if (saveNewQuizSet && quiz) {
-          updatePayload.savedQuizzes = arrayUnion({
-            id: crypto.randomUUID(),
-            name: quizSetName || defaultQuizSetName,
-            createdAt: new Date(),
-            questions: quiz,
-          });
+          const newQuizSet = { id: crypto.randomUUID(), name: quizSetName || defaultQuizSetName, createdAt: newTimestamp, questions: quiz };
+          newSetId = newQuizSet.id;
+          updatePayload.savedQuizzes = arrayUnion(newQuizSet);
         }
         
         await updateDoc(bookRef, updatePayload);
         const updatedDoc = await getDoc(bookRef);
-        finalBookData = { id: updatedDoc.id, ...updatedDoc.data() } as Book;
+        const finalBookData = { id: updatedDoc.id, ...updatedDoc.data() } as Book;
+        
+        // If a new quiz set was added, ensure its ID is correctly assigned in the returned object
+        if (newSetId) {
+          const foundSet = finalBookData.savedQuizzes.find(q => q.name === (quizSetName || defaultQuizSetName) && q.createdAt.isEqual(newTimestamp));
+          if (foundSet) {
+            foundSet.id = newSetId;
+          }
+        }
+        
+        return finalBookData;
       }
-
-      if (!finalBookData) {
-        throw new Error("Failed to retrieve saved book");
-      }
-      
-      return finalBookData;
 
     } catch (error) {
       console.error('Error saving book:', error);
@@ -296,6 +299,10 @@ import {
 
   // Log a quiz attempt
   export async function logQuizAttempt(attempt: Omit<QuizAttempt, 'attemptedAt'>): Promise<void> {
+    if (!attempt.userId || !attempt.bookId || !attempt.quizSetId) {
+      console.error("Attempting to log quiz with invalid data:", attempt);
+      return; // Do not log if essential data is missing
+    }
     try {
       await addDoc(collection(db, 'quizAttempts'), {
         ...attempt,

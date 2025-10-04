@@ -126,8 +126,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const handleSubmit = async () => {
     if (!user || quizToDisplay.length === 0) return;
 
-    let currentBook = book;
-    let currentQuizSet = activeQuizSet;
+    let currentBookForLogging = book;
+    let currentQuizSetForLogging = activeQuizSet;
+
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
@@ -140,11 +141,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
     // If this is a new, unsaved quiz, save it first to get a bookId and quizSetId
     if (generatedQuiz) {
-        toast({ title: "Saving your new quiz..." });
+        toast({ title: "Saving your new quiz attempt..." });
         const savedBook = await handleSaveQuiz(generatedQuiz);
         if (savedBook) {
-            currentBook = savedBook;
-            currentQuizSet = savedBook.savedQuizzes[savedBook.savedQuizzes.length - 1];
+            currentBookForLogging = savedBook;
+            // Find the most recently added quiz set
+            currentQuizSetForLogging = savedBook.savedQuizzes.slice().sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)[0];
         } else {
             toast({ variant: "destructive", title: "Error", description: "Could not save the quiz, so this attempt won't be logged." });
             return; // Exit if we couldn't save the book
@@ -154,14 +156,17 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
     const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
 
-    if (currentBook?.id && currentQuizSet) {
+    if (currentBookForLogging?.id && currentQuizSetForLogging?.id) {
       await logQuizAttempt({
         userId: user.uid,
-        bookId: currentBook.id,
-        quizSetId: currentQuizSet.id,
+        bookId: currentBookForLogging.id,
+        quizSetId: currentQuizSetForLogging.id,
         score: finalScorePercentage,
         timeTaken: timeTaken,
       });
+    } else {
+        console.error("Could not log quiz attempt. Missing bookId or quizSetId.", {book: currentBookForLogging, quizSet: currentQuizSetForLogging})
+        toast({ variant: "destructive", title: "Logging Error", description: "Failed to log this quiz attempt."})
     }
 
     const pointsEarned = newScore * 10; // 10 points per correct answer
@@ -249,7 +254,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         setBook(updatedBook);
         setCurrentBookId(updatedBook.id);
         
-        const newSet = updatedBook.savedQuizzes.slice(-1)[0];
+        // Find the newly added set to make it active
+        const newSet = updatedBook.savedQuizzes.slice().sort((a,b) => b.createdAt.seconds - a.createdAt.seconds)[0];
         setActiveQuizSet(newSet);
         setGeneratedQuiz(null);
         setQuizStartTime(Date.now());
