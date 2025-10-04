@@ -210,9 +210,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         }
         
         const updatedBook = await saveBook(saveParams);
-
-        onBookUpdate(updatedBook); // Update parent
-        setBook(updatedBook); // Update local state directly
+        
+        onBookUpdate(updatedBook);
+        setBook(updatedBook);
 
         if (!currentBookId) {
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
@@ -253,10 +253,22 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     }
   }
 
+  const handleChallengeClick = () => {
+    const isReadyForChallenge = !!book?.id && (!!activeQuizSet || justSaved);
+    if (isReadyForChallenge) {
+        setIsChallengeDialogOpen(true);
+    } else {
+        toast({
+            variant: "default",
+            title: "Save Quiz First",
+            description: "Please save this quiz as a new set before challenging a friend.",
+        });
+    }
+  };
+
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book?.id && !!activeQuizSet;
    
   return (
     <>
@@ -279,14 +291,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             />
         </div>
        )}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handleGenerateQuiz} disabled={isLoading} className="flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={handleGenerateQuiz} disabled={isLoading}>
           {isLoading ? (
-            <LoaderCircle className="mr-2 animate-spin" />
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Lightbulb className="mr-2" />
+            <Lightbulb className="mr-2 h-4 w-4" />
           )}
-          {activeQuizSet || generatedQuiz ? "Generate New Quiz" : "Generate Quiz"}
+          {quizToDisplay.length > 0 ? "Generate New" : "Generate Quiz"}
         </Button>
 
         {isNewUnsavedContent && (
@@ -294,14 +306,13 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 onClick={handleSaveQuiz}
                 disabled={isSaveButtonDisabled}
                 variant={"default"}
-                className="flex-1"
             >
-                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
-         {book && (
-          <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
+         {book && book.savedQuizzes && book.savedQuizzes.length > 0 && (
+          <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
               <History className="mr-2 h-4 w-4" />
               View Saved
           </Button>
@@ -405,7 +416,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                         <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
                             Submit Quiz
                         </Button>
-                         <Button variant="default" onClick={() => setIsChallengeDialogOpen(true)} disabled={!canChallenge} className="w-full">
+                         <Button variant="outline" onClick={handleChallengeClick} className="w-full">
                             <Swords className="mr-2 h-4 w-4" />
                             Challenge Friend
                         </Button>
