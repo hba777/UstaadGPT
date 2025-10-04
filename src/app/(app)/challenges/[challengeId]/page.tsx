@@ -3,10 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/context/AuthContext';
-import { getBookById, type Book, type SavedQuizSet } from '@/lib/firestore';
+import { getBookById, type SavedQuizSet } from '@/lib/firestore';
 import { type QuizChallenge } from '@/models/quiz-challenge';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Award, Check, X, Repeat, LoaderCircle, Swords, ArrowLeft } from 'lucide-react';
+import { Award, Check, X, ArrowLeft, LoaderCircle, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type QuizState = "in_progress" | "submitted";
@@ -33,6 +33,7 @@ export default function TakeChallengePage() {
     const [quizSet, setQuizSet] = useState<SavedQuizSet | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isChallenger, setIsChallenger] = useState(false);
 
     const [quizState, setQuizState] = useState<QuizState>("in_progress");
     const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
@@ -51,19 +52,32 @@ export default function TakeChallengePage() {
                     throw new Error("Challenge not found.");
                 }
 
-                const challengeData = challengeDoc.data() as QuizChallenge;
-                if (challengeData.recipientUid !== user.uid) {
-                    throw new Error("You are not the recipient of this challenge.");
+                const challengeData = { id: challengeDoc.id, ...challengeDoc.data() } as QuizChallenge;
+                
+                if (challengeData.recipientUid !== user.uid && challengeData.challengerUid !== user.uid) {
+                    throw new Error("You are not a participant in this challenge.");
                 }
-                 if (challengeData.status !== 'pending') {
+                
+                if (challengeData.status === 'completed') {
                     router.replace('/challenges');
-                    toast({title: "This challenge has already been completed or declined."})
+                    toast({title: "This challenge has already been completed."})
                     return;
                 }
 
+                const currentUserIsChallenger = challengeData.challengerUid === user.uid;
+                setIsChallenger(currentUserIsChallenger);
+
+                // Check if user has already submitted a score
+                if ((currentUserIsChallenger && challengeData.challengerScore !== null) || (!currentUserIsChallenger && challengeData.recipientScore !== null)) {
+                    router.replace('/challenges');
+                    toast({ title: "You have already completed this challenge." });
+                    return;
+                }
+                
                 setChallenge(challengeData);
 
-                const book = await getBookById(challengeData.bookId, challengeData.challengerUid);
+                const bookOwnerUid = challengeData.challengerUid;
+                const book = await getBookById(challengeData.bookId, bookOwnerUid);
                 if (!book) {
                     throw new Error("The book for this challenge could not be found.");
                 }
@@ -74,7 +88,11 @@ export default function TakeChallengePage() {
                 }
 
                 setQuizSet(targetQuizSet);
-                 await updateDoc(challengeDocRef, { status: 'in-progress' });
+
+                // Update status to 'in-progress' if it's the first person to start
+                if (challengeData.status === 'pending') {
+                    await updateDoc(challengeDocRef, { status: 'in-progress' });
+                }
 
 
             } catch (err: any) {
@@ -93,7 +111,7 @@ export default function TakeChallengePage() {
     };
 
     const handleSubmit = async () => {
-        if (!challenge || !quizSet) return;
+        if (!challenge || !quizSet || !user) return;
     
         let newScore = 0;
         quizSet.questions.forEach((q, i) => {
@@ -107,37 +125,37 @@ export default function TakeChallengePage() {
     
         try {
             const challengeDocRef = doc(db, 'quizChallenges', challengeId);
-            const challengeDoc = await getDoc(challengeDocRef); // Re-fetch to be safe
-            if(!challengeDoc.exists()) throw new Error("Challenge vanished");
-
-            const currentData = challengeDoc.data() as QuizChallenge;
             
-            // Wait for challenger to submit their score if they haven't yet
-            if(currentData.challengerScore === null) {
-                // In a real app you might use a transaction or a cloud function to handle this race condition
-                // For now, we'll just optimistically update.
-                toast({title: "Waiting for challenger...", description: "Your score will be recorded when the challenger completes their side."})
-            }
-
-            const challengerScore = currentData.challengerScore ?? 0; // Assume 0 if null
+            // Prepare update for current user
+            const scoreFieldToUpdate = isChallenger ? { challengerScore: newScore } : { recipientScore: newScore };
+            await updateDoc(challengeDocRef, scoreFieldToUpdate);
             
-            let winnerUid: QuizChallenge['winnerUid'] = null;
-            if (newScore > challengerScore) {
-                winnerUid = challenge.recipientUid;
-            } else if (challengerScore > newScore) {
-                winnerUid = challenge.challengerUid;
+            // Now, get the latest state of the challenge
+            const updatedChallengeDoc = await getDoc(challengeDocRef);
+            if(!updatedChallengeDoc.exists()) throw new Error("Challenge vanished");
+            const currentData = updatedChallengeDoc.data() as QuizChallenge;
+            
+            // Check if both players have submitted scores
+            if (currentData.challengerScore !== null && currentData.recipientScore !== null) {
+                let winnerUid: QuizChallenge['winnerUid'] = null;
+                if (currentData.recipientScore > currentData.challengerScore) {
+                    winnerUid = currentData.recipientUid;
+                } else if (currentData.challengerScore > currentData.recipientScore) {
+                    winnerUid = currentData.challengerUid;
+                } else {
+                    winnerUid = 'draw';
+                }
+
+                await updateDoc(challengeDocRef, {
+                    status: 'completed',
+                    completedAt: serverTimestamp(),
+                    winnerUid: winnerUid,
+                });
+
+                toast({ title: "Challenge Complete!", description: `The results are in. You scored ${newScore}/${quizSet.questions.length}.` });
             } else {
-                winnerUid = 'draw';
+                toast({ title: "Score Submitted!", description: `You scored ${newScore}/${quizSet.questions.length}. Waiting for the other player.` });
             }
-
-            await updateDoc(challengeDocRef, {
-                recipientScore: newScore,
-                status: 'completed',
-                completedAt: serverTimestamp(),
-                winnerUid: winnerUid,
-            });
-
-            toast({ title: "Challenge Complete!", description: `You scored ${newScore}/${quizSet.questions.length}.` });
 
         } catch (err) {
             console.error("Error updating challenge:", err);
@@ -167,6 +185,7 @@ export default function TakeChallengePage() {
     }
 
     const allQuestionsAnswered = Object.keys(userAnswers).length === quizSet.questions.length;
+    const opponentName = isChallenger ? challenge.recipientName : challenge.challengerName;
     
     return (
         <div className="space-y-6">
@@ -175,7 +194,7 @@ export default function TakeChallengePage() {
                 <h1 className="text-3xl font-bold tracking-tight">Quiz Challenge</h1>
             </div>
             <p className="text-muted-foreground">
-                You are being challenged by <span className="font-semibold">{challenge.challengerName}</span> on the book "{challenge.bookTitle}". Good luck!
+                You are playing against <span className="font-semibold">{opponentName}</span> on the book "{challenge.bookTitle}". Good luck!
             </p>
 
             <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
@@ -186,30 +205,25 @@ export default function TakeChallengePage() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-center gap-2">
                                         <Award className="text-yellow-500" />
-                                        Challenge Complete!
+                                        Your Score
                                     </CardTitle>
-                                    <CardDescription>Your score</CardDescription>
+                                    <CardDescription>Results will be available once both players have finished.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                 <p className="text-5xl font-bold">{Math.round((score / quizSet.questions.length) * 100)}%</p>
                                 <p className="text-muted-foreground mt-1">({score} out of {quizSet.questions.length} correct)</p>
                                 <Progress value={(score / quizSet.questions.length) * 100} className="w-full mt-4" />
+                                <Button onClick={() => router.push('/challenges')} className="w-full mt-6">
+                                    Back to Challenges
+                                </Button>
                                 </CardContent>
                             </Card>
                         )}
-                        {quizSet.questions.map((question, qIndex) => (
-                             <Card key={qIndex} className={cn(
-                                'transition-colors duration-300',
-                                quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10')
-                            )}>
+                        {quizState !== "submitted" && quizSet.questions.map((question, qIndex) => (
+                             <Card key={qIndex}>
                                 <CardHeader>
                                     <CardTitle className="text-base flex justify-between items-start">
                                         <span>Question {qIndex + 1}</span>
-                                        {quizState === 'submitted' && (
-                                            userAnswers[qIndex] === question.correctAnswerIndex ? 
-                                            <Check className="h-5 w-5 text-green-700 flex-shrink-0" /> : 
-                                            <X className="h-5 w-5 text-red-700 flex-shrink-0" />
-                                        )}
                                     </CardTitle>
                                     <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
                                 </CardHeader>
@@ -222,13 +236,10 @@ export default function TakeChallengePage() {
                                         {question.options.map((option, oIndex) => (
                                              <div key={oIndex} className={cn(
                                                 "flex items-center space-x-3 p-3 rounded-md transition-colors",
-                                                quizState === "submitted" && (oIndex === question.correctAnswerIndex) && "bg-green-500/20",
-                                                quizState === "submitted" && (userAnswers[qIndex] === oIndex) && (oIndex !== question.correctAnswerIndex) && "bg-red-500/20",
-                                                quizState !== "submitted" && "hover:bg-muted/50 cursor-pointer",
-                                                quizState === "submitted" && "cursor-default"
+                                                "hover:bg-muted/50 cursor-pointer",
                                             )}>
                                                 <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
-                                                <Label htmlFor={`q${qIndex}o${oIndex}`} className={cn("flex-1", quizState !== 'submitted' ? 'cursor-pointer' : 'cursor-default')}>
+                                                <Label htmlFor={`q${qIndex}o${oIndex}`} className={"flex-1 cursor-pointer"}>
                                                     {option}
                                                 </Label>
                                             </div>
@@ -241,11 +252,6 @@ export default function TakeChallengePage() {
                         {quizState === "in_progress" && (
                             <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
                                 Submit Quiz
-                            </Button>
-                        )}
-                         {quizState === "submitted" && (
-                            <Button onClick={() => router.push('/challenges')} className="w-full">
-                                Back to Challenges
                             </Button>
                         )}
                      </div>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Swords, ArrowRight, Trophy, Clock } from 'lucide-react';
+import { Swords, ArrowRight, Trophy, Clock, CheckCircle, HelpCircle } from 'lucide-react';
 import type { QuizChallenge } from '@/models/quiz-challenge';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -21,17 +21,25 @@ type ChallengeWithId = QuizChallenge & { id: string };
 function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 'incoming' | 'sent' }) {
     const router = useRouter();
     const { user } = useAuthContext();
+    if (!user) return null;
+    
     const isWinner = challenge.winnerUid === user?.uid;
     const isLoser = challenge.winnerUid !== null && challenge.winnerUid !== 'draw' && challenge.winnerUid !== user?.uid;
     const isDraw = challenge.winnerUid === 'draw';
 
-    const handleAccept = () => {
+    const handleTakeQuiz = () => {
         router.push(`/challenges/${challenge.id}`);
     }
 
     const opponent = type === 'incoming' 
-        ? { name: challenge.challengerName, photo: challenge.challengerPhotoURL }
-        : { name: challenge.recipientName, photo: challenge.recipientPhotoURL };
+        ? { name: challenge.challengerName, photo: challenge.challengerPhotoURL, score: challenge.challengerScore }
+        : { name: challenge.recipientName, photo: challenge.recipientPhotoURL, score: challenge.recipientScore };
+    
+    const currentUserPlayer = type === 'incoming' 
+        ? { name: challenge.recipientName, photo: challenge.recipientPhotoURL, score: challenge.recipientScore }
+        : { name: challenge.challengerName, photo: challenge.challengerPhotoURL, score: challenge.challengerScore };
+
+    const hasCurrentUserPlayed = currentUserPlayer.score !== null;
 
     return (
         <Card>
@@ -48,10 +56,16 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
                             {isWinner ? 'You Won' : isLoser ? 'You Lost' : 'Draw'}
                         </div>
                     )}
-                     {challenge.status === 'pending' && type === 'sent' && (
+                     {challenge.status === 'pending' && (
                         <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                            <Clock className="h-4 w-4"/>
                             Pending
+                        </div>
+                    )}
+                     {challenge.status === 'in-progress' && (
+                        <div className="flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                           <Swords className="h-4 w-4"/>
+                            In Progress
                         </div>
                     )}
                 </div>
@@ -61,29 +75,37 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
             </CardHeader>
             <CardContent>
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Avatar className="h-10 w-10">
-                            <AvatarImage src={user?.photoURL || undefined} />
-                            <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="text-center">
-                            <p className="font-bold">{challenge.challengerScore ?? '-'}</p>
-                            <p className="text-xs text-muted-foreground">{challenge.challengerName.split(' ')[0]}</p>
+                     <div className="flex items-center gap-2">
+                        <div className="text-center relative">
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={currentUserPlayer.photo || undefined} />
+                                <AvatarFallback>{currentUserPlayer.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            {currentUserPlayer.score !== null && <CheckCircle className="h-4 w-4 text-white bg-green-500 rounded-full absolute -bottom-1 -right-1" />}
+                            <p className="text-lg font-bold mt-1">{currentUserPlayer.score ?? '-'}</p>
+                            <p className="text-xs text-muted-foreground">{currentUserPlayer.name.split(' ')[0]}</p>
                         </div>
-                        <span className="text-muted-foreground font-bold">vs</span>
-                         <div className="text-center">
-                            <p className="font-bold">{challenge.recipientScore ?? '-'}</p>
-                            <p className="text-xs text-muted-foreground">{challenge.recipientName.split(' ')[0]}</p>
+                        <span className="text-muted-foreground font-bold text-sm">vs</span>
+                         <div className="text-center relative">
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={opponent.photo || undefined} />
+                                <AvatarFallback>{opponent.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            {opponent.score !== null && <CheckCircle className="h-4 w-4 text-white bg-green-500 rounded-full absolute -bottom-1 -right-1" />}
+                            <p className="text-lg font-bold mt-1">{opponent.score ?? '-'}</p>
+                            <p className="text-xs text-muted-foreground">{opponent.name.split(' ')[0]}</p>
                         </div>
-                        <Avatar className="h-10 w-10">
-                            <AvatarImage src={opponent.photo || undefined} />
-                            <AvatarFallback>{opponent.name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
                     </div>
 
-                    {challenge.status === 'pending' && type === 'incoming' && (
-                        <Button onClick={handleAccept}>
-                            Accept Challenge <ArrowRight className="ml-2 h-4 w-4" />
+                    {!hasCurrentUserPlayed && (challenge.status === 'pending' || challenge.status === 'in-progress') && (
+                        <Button onClick={handleTakeQuiz}>
+                            {type === 'incoming' ? "Accept & Play" : "Take Quiz"} <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    )}
+
+                    {hasCurrentUserPlayed && challenge.status !== 'completed' && (
+                         <Button variant="secondary" disabled>
+                            <Clock className="mr-2 h-4 w-4" /> Waiting for opponent
                         </Button>
                     )}
                 </div>
@@ -133,7 +155,7 @@ function ChallengeList({ type }: { type: 'incoming' | 'sent' }) {
     if (isLoading) {
         return (
             <div className="space-y-4">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
             </div>
         );
     }
