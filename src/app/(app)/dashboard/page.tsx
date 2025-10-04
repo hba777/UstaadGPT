@@ -13,6 +13,7 @@ import { StatsCard } from '@/components/dashboard/stats-card'
 import { ProgressChart } from '@/components/dashboard/progress-chart'
 import { useAuthContext } from '@/context/AuthContext';
 import { WeaknessAnalysis } from '@/components/dashboard/weakness-analysis';
+import { RecommendationCard } from '@/components/dashboard/recommendation-card';
 
 export default function DashboardPage() {
   const { user } = useAuthContext();
@@ -25,6 +26,9 @@ export default function DashboardPage() {
           Welcome back! Here's a summary of your progress.
         </p>
       </div>
+
+      <RecommendationCard />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           title="Study Streak"
