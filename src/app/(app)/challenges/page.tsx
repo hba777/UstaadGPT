@@ -81,7 +81,6 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
                                 <AvatarImage src={currentUserPlayer.photo || undefined} />
                                 <AvatarFallback>{currentUserPlayer.name?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            {currentUserPlayer.score !== null && <CheckCircle className="h-4 w-4 text-white bg-green-500 rounded-full absolute -bottom-1 -right-1" />}
                             <p className="text-lg font-bold mt-1">{currentUserPlayer.score ?? '-'}</p>
                             <p className="text-xs text-muted-foreground">{currentUserPlayer.name.split(' ')[0]}</p>
                         </div>
@@ -91,7 +90,6 @@ function ChallengeCard({ challenge, type }: { challenge: ChallengeWithId; type: 
                                 <AvatarImage src={opponent.photo || undefined} />
                                 <AvatarFallback>{opponent.name?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            {opponent.score !== null && <CheckCircle className="h-4 w-4 text-white bg-green-500 rounded-full absolute -bottom-1 -right-1" />}
                             <p className="text-lg font-bold mt-1">{opponent.score ?? '-'}</p>
                             <p className="text-xs text-muted-foreground">{opponent.name.split(' ')[0]}</p>
                         </div>
