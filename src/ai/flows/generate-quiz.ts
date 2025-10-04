@@ -15,8 +15,14 @@ const GenerateQuizInputSchema = z.object({
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
+const QuizQuestionSchema = z.object({
+    questionText: z.string().describe('The text of the quiz question.'),
+    options: z.array(z.string()).describe('An array of possible answers for the question.'),
+    correctAnswerIndex: z.number().describe('The 0-based index of the correct answer in the options array.')
+});
+
 const GenerateQuizOutputSchema = z.object({
-  quiz: z.string().describe('The generated quiz based on the document content.'),
+  quiz: z.array(QuizQuestionSchema).describe('An array of quiz questions generated from the document content.'),
 });
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
@@ -31,7 +37,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert in creating quizzes based on provided text content.
 
   Based on the following document text, generate a quiz with multiple-choice questions.
-  The quiz should test the user's understanding of the key concepts in the document.
+  Each question should have a question text, an array of options, and the index of the correct answer.
+  Return the output in the specified JSON format.
 
   Document Text: {{{documentText}}}
   `,

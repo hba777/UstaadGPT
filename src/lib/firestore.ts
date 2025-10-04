@@ -1,3 +1,4 @@
+
 // lib/firestore.ts
 import { 
     doc, 
@@ -11,67 +12,155 @@ import {
     serverTimestamp,
     deleteDoc,
     getDoc,
-    Timestamp
+    Timestamp,
+    setDoc,
+    arrayUnion,
+    arrayRemove
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
+
+  export interface QuizQuestion {
+    questionText: string;
+    options: string[];
+    correctAnswerIndex: number;
+  }
+
+  export interface Flashcard {
+    front: string
+    back: string
+  }
+
+  export interface SavedQuizSet {
+    id: string;
+    createdAt: Timestamp;
+    questions: QuizQuestion[];
+  }
+
+  export interface SavedFlashcardSet {
+    id: string;
+    createdAt: Timestamp;
+    cards: Flashcard[];
+  }
   
   export interface Book {
     id?: string
     userId: string
     title: string
-    flashcards: Flashcard[]
+    flashcards: Flashcard[] // Represents the latest/active flashcards
+    quiz?: QuizQuestion[] // Represents the latest/active quiz
+    savedFlashcards?: SavedFlashcardSet[]
+    savedQuizzes?: SavedQuizSet[]
     createdAt: any
     updatedAt: any
     documentContent?: string 
   }
   
-  export interface Flashcard {
-    front: string
-    back: string
+  export interface SaveBookParams {
+    userId: string;
+    bookId?: string; // If updating existing book
+    bookTitle: string;
+    documentContent?: string;
+    flashcards?: Flashcard[];
+    quiz?: QuizQuestion[];
+    saveNewQuizSet?: boolean;
+    saveNewFlashcardSet?: boolean;
   }
   
-  export interface SaveFlashcardsParams {
-    userId: string
-    bookId?: string // If updating existing book
-    bookTitle: string
-    flashcards: Flashcard[]
-    documentContent?: string
-  }
-  
-  // Save or update flashcards for a book
-  export async function saveFlashcardsToFirestore({
+  // Save or update a book
+  export async function saveBook({
     userId,
     bookId,
     bookTitle,
+    documentContent,
     flashcards,
-    documentContent
-  }: SaveFlashcardsParams): Promise<string> {
+    quiz,
+    saveNewFlashcardSet,
+    saveNewQuizSet,
+  }: SaveBookParams): Promise<Book> {
     try {
-      const bookData: Partial<Book> & { userId: string; title: string; flashcards: Flashcard[]; updatedAt: any } = {
+      const isUpdating = !!bookId;
+      const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
+      
+      const bookData: Partial<Book> & { updatedAt: any } = {
         userId,
         title: bookTitle,
-        flashcards,
-        documentContent,
         updatedAt: serverTimestamp(),
-      }
+      };
+  
+      if (documentContent !== undefined) bookData.documentContent = documentContent;
+      
+      const updatePayload: any = {
+        title: bookTitle,
+        updatedAt: serverTimestamp(),
+      };
 
-      if (bookId) {
-        // Update existing book
-        const bookRef = doc(db, 'books', bookId)
-        await updateDoc(bookRef, bookData)
-        return bookId
+      if (isUpdating) {
+        if (flashcards) {
+          updatePayload.flashcards = flashcards;
+          if (saveNewFlashcardSet) {
+            updatePayload.savedFlashcards = arrayUnion({
+              id: crypto.randomUUID(),
+              createdAt: new Date(),
+              cards: flashcards,
+            });
+          }
+        }
+        if (quiz) {
+          updatePayload.quiz = quiz;
+           if (saveNewQuizSet) {
+            updatePayload.savedQuizzes = arrayUnion({
+              id: crypto.randomUUID(),
+              createdAt: new Date(),
+              questions: quiz,
+            });
+          }
+        }
+        await updateDoc(bookRef, updatePayload);
       } else {
         // Create new book
-        const booksCollection = collection(db, 'books')
-        const docRef = await addDoc(booksCollection, {
-            ...bookData,
-            createdAt: serverTimestamp()
-        })
-        return docRef.id
+        bookData.createdAt = serverTimestamp();
+        bookData.flashcards = flashcards || [];
+        bookData.quiz = quiz || [];
+        bookData.savedFlashcards = [];
+        bookData.savedQuizzes = [];
+        await setDoc(bookRef, bookData, { merge: true });
       }
+
+      const savedDoc = await getDoc(bookRef);
+      if (!savedDoc.exists()) {
+        throw new Error("Failed to retrieve saved book");
+      }
+      return { id: savedDoc.id, ...savedDoc.data() } as Book;
+
     } catch (error) {
-      console.error('Error saving flashcards:', error)
-      throw new Error('Failed to save flashcards')
+      console.error('Error saving book:', error);
+      throw new Error('Failed to save book');
+    }
+  }
+
+  // Delete a saved quiz set from a book
+  export async function deleteSavedQuizSet(bookId: string, quizSet: SavedQuizSet): Promise<void> {
+    try {
+      const bookRef = doc(db, 'books', bookId);
+      await updateDoc(bookRef, {
+        savedQuizzes: arrayRemove(quizSet)
+      });
+    } catch (error) {
+      console.error('Error deleting saved quiz set:', error);
+      throw new Error('Failed to delete quiz set.');
+    }
+  }
+
+  // Delete a saved flashcard set from a book
+  export async function deleteSavedFlashcardSet(bookId: string, flashcardSet: SavedFlashcardSet): Promise<void> {
+    try {
+      const bookRef = doc(db, 'books', bookId);
+      await updateDoc(bookRef, {
+        savedFlashcards: arrayRemove(flashcardSet)
+      });
+    } catch (error) {
+      console.error('Error deleting saved flashcard set:', error);
+      throw new Error('Failed to delete flashcard set.');
     }
   }
   

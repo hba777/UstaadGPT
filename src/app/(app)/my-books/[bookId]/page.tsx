@@ -1,49 +1,49 @@
 
 "use client"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { getBookById, type Book } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
-import { BookFlashcardsView } from "@/components/study/book-flashcards-view"
-import { FlashcardView } from "@/components/study/flashcard-view"
+import { AITools } from "@/components/study/ai-tools"
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Book as BookIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DocumentView } from "@/components/study/document-view"
 
-type ViewMode = 'view-book' | 'edit-book'
-
-export default function BookDetailPage({ params }: { params: { bookId: string } }) {
+export default function BookDetailPage() {
   const { user } = useAuthContext()
   const router = useRouter()
-  const { bookId } = params
+  const params = useParams()
+  const bookId = params.bookId as string
   const [book, setBook] = useState<Book | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>('view-book')
+
+  const fetchBook = async (id: string, uid: string) => {
+    setIsLoading(true)
+    try {
+      const fetchedBook = await getBookById(id, uid)
+      setBook(fetchedBook)
+    } catch (error) {
+      console.error("Failed to fetch book", error)
+      setBook(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (user?.uid && bookId) {
-      const fetchBook = async () => {
-        setIsLoading(true)
-        try {
-          const fetchedBook = await getBookById(bookId, user.uid)
-          setBook(fetchedBook)
-        } catch (error) {
-          console.error("Failed to fetch book", error)
-        } finally {
-          setIsLoading(false)
-        }
-      }
-      fetchBook()
+      fetchBook(bookId, user.uid)
     }
   }, [user?.uid, bookId])
+
+  const handleBookUpdate = (updatedBook: Book) => {
+    setBook(updatedBook);
+  }
   
   const handleBackToBooks = () => {
     router.push('/my-books')
-  }
-
-  const handleEdit = (book: Book) => {
-    setBook(book)
-    setViewMode('edit-book')
   }
 
   if (isLoading) {
@@ -51,7 +51,6 @@ export default function BookDetailPage({ params }: { params: { bookId: string } 
       <div className="flex flex-col gap-4 h-full p-6">
         <div className="flex items-center gap-4">
             <Skeleton className="h-10 w-36" />
-            <Skeleton className="h-10 w-24" />
         </div>
         <Skeleton className="w-full flex-grow" />
       </div>
@@ -72,21 +71,34 @@ export default function BookDetailPage({ params }: { params: { bookId: string } 
   }
   
   return (
-    <div className="h-full p-6">
-      {viewMode === 'view-book' && (
-        <BookFlashcardsView
-          book={book}
-          onBack={handleBackToBooks}
-          onEdit={handleEdit}
-        />
-      )}
-      {viewMode === 'edit-book' && (
-        <FlashcardView
-          documentContent={book.documentContent || ""}
-          bookId={book.id}
-          bookName={book.title}
-        />
-      )}
+    <div className="h-[calc(100vh-5rem)] flex flex-col">
+        <div className="flex items-center gap-4 p-4 border-b">
+            <Button variant="outline" size="sm" onClick={handleBackToBooks}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center gap-2 min-w-0">
+                <BookIcon className="h-5 w-5 flex-shrink-0" />
+                <h1 className="text-lg font-semibold truncate">{book.title}</h1>
+            </div>
+        </div>
+       <ResizablePanelGroup direction="horizontal" className="flex-grow rounded-lg border">
+        <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="p-6 h-full min-w-0">
+                <DocumentView content={book.documentContent || "No document content available."} />
+            </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="p-6 h-full">
+                <AITools 
+                  documentContent={book.documentContent || ""} 
+                  book={book} 
+                  onBookUpdate={handleBookUpdate}
+                />
+            </div>
+        </ResizablePanel>
+       </ResizablePanelGroup>
     </div>
   )
 }

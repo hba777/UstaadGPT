@@ -17,7 +17,7 @@ export function DocumentView({ content }: DocumentViewProps) {
       <Card className="h-full flex-grow">
         <CardContent className="h-full p-4">
           <ScrollArea className="h-full pr-4">
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
               {content}
             </p>
           </ScrollArea>
