@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,8 +7,9 @@ import { getQuizHistory } from "@/lib/firestore";
 import { type QuizHistory } from "@/models/user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, TrendingDown, Book, BarChart3 } from "lucide-react";
+import { Target, TrendingDown, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
 
 interface TopicStats {
   topic: string; // Book title
@@ -118,24 +120,28 @@ export function WeaknessAnalysis() {
                 {weakTopics.map(topic => (
                     <li 
                         key={topic.bookId}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                        onClick={() => handleTopicClick(topic.bookId)}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg bg-muted/50"
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 mb-3 sm:mb-0">
                             <div className="p-2 bg-destructive/10 rounded-lg">
                                 <TrendingDown className="h-6 w-6 text-destructive" />
                             </div>
                             <div>
                                 <p className="font-semibold">{topic.topic}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    {topic.attempts} attempt{topic.attempts > 1 ? 's' : ''}
+                                    Avg. Score: <span className="font-bold text-destructive">{topic.averageScore}%</span> over {topic.attempts} attempt{topic.attempts > 1 ? 's' : ''}
                                 </p>
                             </div>
                         </div>
-                        <div className="text-right">
-                           <p className="font-bold text-lg text-destructive">{topic.averageScore}%</p>
-                           <p className="text-xs text-muted-foreground">Avg. Score</p>
-                        </div>
+                        <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={() => handleTopicClick(topic.bookId)}
+                            className="w-full sm:w-auto"
+                        >
+                            Study this topic
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
                     </li>
                 ))}
             </ul>
