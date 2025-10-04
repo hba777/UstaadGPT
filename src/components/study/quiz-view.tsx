@@ -260,14 +260,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleChallengeClick = () => {
-    // A challenge is possible if there's a book and at least one saved quiz.
-    if (book?.savedQuizzes && book.savedQuizzes.length > 0) {
+    const isReadyForChallenge = !!book?.id && !!activeQuizSet;
+    if (isReadyForChallenge) {
         setIsChallengeDialogOpen(true);
     } else {
         toast({
             variant: "default",
             title: "Save Quiz First",
-            description: "You must save a quiz to this book before you can challenge a friend.",
+            description: "Please save this quiz as a new set before challenging a friend.",
         });
     }
   };
@@ -275,7 +275,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book?.id && !!book.savedQuizzes && book.savedQuizzes.length > 0;
+  const canChallenge = !!book?.id && !!activeQuizSet;
    
   return (
     <>
@@ -321,12 +321,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
               <History className="mr-2 h-4 w-4" />
               View Saved
-          </Button>
-         )}
-         {book?.id && (
-          <Button variant="outline" onClick={handleChallengeClick} disabled={!canChallenge}>
-            <Swords className="mr-2 h-4 w-4" />
-            Challenge Friend
           </Button>
          )}
       </div>
@@ -424,9 +418,15 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 ))}
 
                 {quizState === "in_progress" && (
-                    <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
-                        Submit Quiz
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="flex-1">
+                            Submit Quiz
+                        </Button>
+                        <Button onClick={handleChallengeClick} variant="outline" className="flex-1">
+                             <Swords className="mr-2 h-4 w-4" />
+                            Challenge Friend
+                        </Button>
+                    </div>
                 )}
              </div>
           ) : null}
@@ -449,3 +449,5 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
+
+    
