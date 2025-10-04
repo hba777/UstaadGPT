@@ -20,7 +20,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Separator } from "./ui/separator"
 import { Button } from "./ui/button"
@@ -33,10 +32,10 @@ export function MainNav() {
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <BrainCircuit className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">UstaadGPT</span>
-        </div>
+        </Link>
       </SidebarHeader>
       <Separator />
       <SidebarMenu className="mt-4">
@@ -97,9 +96,6 @@ export function MainNav() {
           description="Manage account & preferences"
         />
       </SidebarMenu>
-      <SidebarFooter className="mt-auto">
-        <p className="text-xs text-muted-foreground">© 2024 UstaadGPT</p>
-      </SidebarFooter>
     </>
   )
 }
