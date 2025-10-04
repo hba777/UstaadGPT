@@ -16,7 +16,7 @@ export const runDailyOrchestration = functions.onSchedule("every 24 hours", asyn
     const usersSnapshot = await db.collection("users").get();
     if (usersSnapshot.empty) {
       console.log("No users found to process.");
-      return null;
+      return;
     }
 
     // 2. Loop through each user and run the orchestrator
@@ -71,5 +71,5 @@ export const runDailyOrchestration = functions.onSchedule("every 24 hours", asyn
       }
     }
     console.log("Finished daily orchestration.");
-    return null;
+    return;
   });
