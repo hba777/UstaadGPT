@@ -1,17 +1,19 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, getDocs, limit, startAt, endAt, orderBy, onSnapshot, doc, getDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuthContext } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserSearch, Users } from "lucide-react";
+import { UserSearch, Users, Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UserProfile } from "@/models/user";
+import { cn } from "@/lib/utils";
 
 type FoundUser = Pick<UserProfile, 'uid' | 'displayName' | 'photoURL'>;
 
@@ -198,18 +200,123 @@ function MyFriendsTab() {
     )
 }
 
+function LeaderboardTab() {
+  const { user: currentUser } = useAuthContext();
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setIsLoading(true);
+
+    const fetchLeaderboard = async () => {
+      try {
+        // 1. Get friend UIDs
+        const friendsRef = collection(db, 'users', currentUser.uid, 'friends');
+        const friendsSnapshot = await getDocs(friendsRef);
+        const friendUids = friendsSnapshot.docs.map(doc => doc.data().uid as string);
+
+        // 2. Combine with current user's UID
+        const allUids = [...new Set([currentUser.uid, ...friendUids])];
+        
+        if (allUids.length === 0) {
+            setUsers([]);
+            setIsLoading(false);
+            return;
+        }
+
+        // 3. Fetch all user profiles. Firestore 'in' query is limited to 30 items.
+        // If the user can have more friends, this would need chunking.
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('uid', 'in', allUids));
+        
+        const userDocs = await getDocs(q);
+        const userList = userDocs.docs.map(doc => doc.data() as UserProfile);
+
+        // 4. Sort by points
+        userList.sort((a, b) => b.points - a.points);
+        
+        setUsers(userList);
+      } catch (error) {
+        console.error("Error fetching leaderboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, [currentUser]);
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 p-2">
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/5" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : users.length > 0 ? (
+          <ul className="space-y-2">
+            {users.map((user, index) => (
+              <li key={user.uid}>
+                <Link
+                  href={`/profile/${user.uid}`}
+                  className={cn(
+                    'flex items-center gap-4 p-2 rounded-lg hover:bg-muted',
+                    currentUser?.uid === user.uid && 'bg-primary/20 hover:bg-primary/30'
+                  )}
+                >
+                  <div className="flex items-center justify-center w-6 font-bold text-lg text-muted-foreground">
+                    {index + 1}
+                  </div>
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={user.photoURL} alt={`${user.displayName}'s avatar`} />
+                    <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium flex-1">{user.displayName}</span>
+                  <div className="text-right">
+                    <div className="font-bold text-primary">{user.points.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">points</div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+             <div className="text-center text-muted-foreground py-10">
+               <p>Your friends leaderboard is empty.</p>
+               <p className="text-sm">Add some friends to start competing!</p>
+            </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function FriendsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Friends & Leaderboard</h1>
         <p className="text-muted-foreground">
-          Find new friends or see your existing connections.
+          Connect with friends and see how you rank.
         </p>
       </div>
-      <Tabs defaultValue="find" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="leaderboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="leaderboard">
+                <Trophy className="mr-2 h-4 w-4" />
+                Leaderboard
+            </TabsTrigger>
             <TabsTrigger value="find">
                 <UserSearch className="mr-2 h-4 w-4" />
                 Find Friends
@@ -219,6 +326,9 @@ export default function FriendsPage() {
                 My Friends
             </TabsTrigger>
         </TabsList>
+        <TabsContent value="leaderboard" className="mt-6">
+           <LeaderboardTab />
+        </TabsContent>
         <TabsContent value="find" className="mt-6">
            <FindFriendsTab />
         </TabsContent>
@@ -229,3 +339,5 @@ export default function FriendsPage() {
     </div>
   );
 }
+
+    

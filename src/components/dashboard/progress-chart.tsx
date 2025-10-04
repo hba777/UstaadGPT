@@ -1,68 +1,89 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { getUserBooks, type Book, type SavedFlashcardSet, type SavedQuizSet } from "@/lib/firestore"
+import { useAuthContext } from "@/context/AuthContext"
+import { Skeleton } from "../ui/skeleton"
+import type { Timestamp } from "firebase/firestore"
 
-const generateData = () => [
-  {
-    name: "Jan",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Feb",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Mar",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Apr",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "May",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Jun",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Jul",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Aug",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Sep",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Oct",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Nov",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Dec",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-]
+type ChartData = {
+  name: string;
+  total: number;
+}
+
+const getDateFromTimestamp = (timestamp: Timestamp): Date | null => {
+    if (!timestamp) return null;
+    return timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+}
 
 export function ProgressChart() {
-  const [data, setData] = useState<any[]>([]);
+  const { user } = useAuthContext();
+  const [data, setData] = useState<ChartData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setData(generateData());
-  }, []);
+    const fetchChartData = async () => {
+      if (!user) return;
 
-  if (data.length === 0) {
-    return <div style={{ height: '350px' }} className="animate-pulse bg-muted/50 rounded-lg" />;
+      setIsLoading(true);
+      try {
+        const books = await getUserBooks(user.uid);
+        const monthlyData: { [key: number]: number } = {};
+
+        for(let i = 0; i < 12; i++) {
+          monthlyData[i] = 0;
+        }
+
+        const currentYear = new Date().getFullYear();
+
+        books.forEach((book: Book) => {
+          // Count book creation
+          const bookCreationDate = getDateFromTimestamp(book.createdAt);
+          if (bookCreationDate && bookCreationDate.getFullYear() === currentYear) {
+            const month = bookCreationDate.getMonth();
+            monthlyData[month]++;
+          }
+
+          // Count saved flashcard sets
+          (book.savedFlashcards || []).forEach((set: SavedFlashcardSet) => {
+            const setCreationDate = getDateFromTimestamp(set.createdAt);
+            if(setCreationDate && setCreationDate.getFullYear() === currentYear) {
+              const month = setCreationDate.getMonth();
+              monthlyData[month]++;
+            }
+          });
+
+          // Count saved quiz sets
+          (book.savedQuizzes || []).forEach((set: SavedQuizSet) => {
+             const setCreationDate = getDateFromTimestamp(set.createdAt);
+            if(setCreationDate && setCreationDate.getFullYear() === currentYear) {
+              const month = setCreationDate.getMonth();
+              monthlyData[month]++;
+            }
+          });
+        });
+        
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const chartData = monthNames.map((name, index) => ({
+          name,
+          total: monthlyData[index] || 0
+        }));
+
+        setData(chartData);
+      } catch (error) {
+        console.error("Failed to fetch book data for chart:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchChartData();
+  }, [user]);
+
+  if (isLoading) {
+    return <Skeleton className="h-[350px] w-full" />;
   }
 
   return (
@@ -80,7 +101,20 @@ export function ProgressChart() {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `${value / 1000}k`}
+          allowDecimals={false}
+          tickFormatter={(value) => `${value}`}
+        />
+        <Tooltip
+          cursor={{ fill: "hsl(var(--muted))" }}
+          contentStyle={{ 
+            backgroundColor: "hsl(var(--background))",
+            borderColor: "hsl(var(--border))",
+            borderRadius: "var(--radius)"
+          }}
+          labelStyle={{
+            color: "hsl(var(--foreground))"
+          }}
+          formatter={(value: number) => [value, 'Activities']}
         />
         <Bar
           dataKey="total"

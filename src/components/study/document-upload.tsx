@@ -15,7 +15,7 @@ if (typeof window !== "undefined") {
 }
 
 interface DocumentUploadProps {
-  onUpload: (content: string, name: string) => void;
+  onUpload: (pages: string[], name: string) => void;
   disabled?: boolean;
 }
 
@@ -49,16 +49,35 @@ export function DocumentUpload({ onUpload, disabled = false }: DocumentUploadPro
     try {
       const arrayBuffer = await file.arrayBuffer()
       const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
-      let fullText = ""
+      const pagesText: string[] = [];
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
         const textContent = await page.getTextContent()
-        fullText += textContent.items.map((item: any) => item.str).join(" ") + "\n"
+        
+        const items = textContent.items.sort((a: any, b: any) => {
+            if (a.transform[5] > b.transform[5]) return -1;
+            if (a.transform[5] < b.transform[5]) return 1;
+            return a.transform[4] - b.transform[4];
+        });
+        
+        let lastY = -1;
+        let pageText = '';
+
+        for (const item of items) {
+            const currentY = item.transform[5];
+            
+            if (lastY !== -1 && Math.abs(currentY - lastY) > (item.height * 0.5) ) {
+                pageText += '\n';
+            }
+            pageText += item.str + ' ';
+            lastY = currentY;
+        }
+        pagesText.push(pageText.trim());
       }
       
       const fileName = file.name.replace(/\.pdf$/i, '')
-      onUpload(fullText, fileName)
+      onUpload(pagesText, fileName)
     } catch (error) {
       console.error("Error processing PDF:", error)
       toast({

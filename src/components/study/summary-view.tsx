@@ -1,7 +1,9 @@
+
 "use client"
 
 import { useState } from "react"
-import { LoaderCircle, Sparkles } from "lucide-react"
+import { LoaderCircle, Sparkles, Download } from "lucide-react"
+import jsPDF from "jspdf"
 
 import { summarizeDocument } from "@/ai/flows/summarize-document"
 import { Button } from "@/components/ui/button"
@@ -36,16 +38,42 @@ export function SummaryView({ documentContent }: SummaryViewProps) {
     }
   }
 
+  const handleExport = () => {
+    if (!summary) {
+        toast({
+            variant: "destructive",
+            title: "No Summary",
+            description: "Please generate a summary before exporting.",
+        });
+        return;
+    }
+    
+    const doc = new jsPDF();
+    doc.text("Summary", 10, 10);
+    // Split text into lines that fit the page width
+    const splitText = doc.splitTextToSize(summary, 180);
+    doc.text(splitText, 10, 20);
+    doc.save("summary.pdf");
+
+    toast({ title: "Exported", description: "Summary downloaded as summary.pdf" });
+  }
+
   return (
     <div className="flex flex-col gap-4 h-full">
-      <Button onClick={handleGenerateSummary} disabled={isLoading}>
-        {isLoading ? (
-          <LoaderCircle className="mr-2 animate-spin" />
-        ) : (
-          <Sparkles className="mr-2" />
-        )}
-        Generate Summary
-      </Button>
+        <div className="flex gap-2">
+            <Button onClick={handleGenerateSummary} disabled={isLoading} className="flex-1">
+                {isLoading ? (
+                <LoaderCircle className="mr-2 animate-spin" />
+                ) : (
+                <Sparkles className="mr-2" />
+                )}
+                Generate Summary
+            </Button>
+            <Button variant="outline" onClick={handleExport} disabled={!summary || isLoading}>
+                <Download className="mr-2 h-4 w-4" />
+                Export as PDF
+            </Button>
+      </div>
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4">
         <ScrollArea className="h-full">
           {isLoading && (

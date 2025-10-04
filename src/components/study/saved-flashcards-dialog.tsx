@@ -1,12 +1,14 @@
 
 "use client"
 import { useState } from "react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type Book, type SavedFlashcardSet, deleteSavedFlashcardSet, getBookById } from "@/lib/firestore"
-import { History, BookCopy, Eye, Trash2, LoaderCircle } from "lucide-react"
+import { History, BookCopy, Eye, Trash2, LoaderCircle, Download } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthContext } from "@/context/AuthContext"
@@ -29,6 +31,26 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
         const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(0);
         return dateB.getTime() - dateA.getTime();
     });
+
+    const handleExport = (set: SavedFlashcardSet) => {
+        if (set.cards.length === 0) {
+            toast({ variant: "destructive", title: "No flashcards to export." });
+            return;
+        }
+
+        const doc = new jsPDF();
+        doc.text(`Flashcards for: ${book?.title || 'Untitled Book'}`, 10, 10);
+        
+        autoTable(doc, {
+            head: [['Front', 'Back']],
+            body: set.cards.map(card => [card.front, card.back]),
+            startY: 20,
+        });
+
+        doc.save(`${book?.title || 'flashcards'}-set.pdf`);
+
+        toast({ title: "Exported", description: "Flashcard set downloaded as a PDF." });
+    };
 
     const handleDelete = async (set: SavedFlashcardSet) => {
         if (!book?.id || !user?.uid) {
@@ -91,6 +113,10 @@ export function SavedFlashcardsDialog({ isOpen, onClose, book, onLoadSet, onBook
                                                     <Button size="sm" variant="outline" onClick={() => onLoadSet(set)}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View
+                                                    </Button>
+                                                     <Button size="sm" variant="outline" onClick={() => handleExport(set)}>
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        Export
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>

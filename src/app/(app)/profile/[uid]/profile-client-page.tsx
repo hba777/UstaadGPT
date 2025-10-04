@@ -9,12 +9,58 @@ import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/models/user';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPlus, UserCheck, Clock, Inbox } from 'lucide-react';
+import { UserPlus, UserCheck, Clock, Inbox, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { allBadges } from '@/lib/badges';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type FriendStatus = 'not_friends' | 'pending_sent' | 'pending_received' | 'friends' | 'self';
+
+function EarnedBadges({ user }: { user: UserProfile }) {
+    if (!user.badges || user.badges.length === 0) {
+        return (
+             <div className="text-center text-sm text-muted-foreground italic mt-4">
+                No badges earned yet.
+             </div>
+        )
+    }
+    
+    const earnedBadges = user.badges.map(badgeId => allBadges.find(b => b.id === badgeId)).filter(Boolean);
+
+    return (
+        <TooltipProvider>
+            <div className="mt-6">
+                <h3 className="text-sm font-semibold text-muted-foreground text-center mb-4">BADGES</h3>
+                <div className="flex flex-wrap gap-4 justify-center">
+                    {earnedBadges.map((badge) => {
+                        if(!badge) return null;
+                        const Icon = badge.icon;
+                        return (
+                            <Tooltip key={badge.id}>
+                                <TooltipTrigger asChild>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className={cn(
+                                            "flex items-center justify-center h-12 w-12 rounded-full bg-accent/20 text-accent",
+                                        )}>
+                                            <Icon className="h-7 w-7" />
+                                        </div>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="font-bold">{badge.name}</p>
+                                    <p>{badge.description}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )
+                    })}
+                </div>
+            </div>
+        </TooltipProvider>
+    );
+}
 
 export default function ProfileClientPage({ uid }: { uid: string }) {
   const { user: currentUser } = useAuthContext();
@@ -131,7 +177,7 @@ export default function ProfileClientPage({ uid }: { uid: string }) {
   const renderFriendButton = () => {
     switch (friendStatus) {
         case 'self':
-            return <Button onClick={() => router.push('/settings')}><Inbox className="mr-2 h-4 w-4" /> Edit Profile</Button>;
+            return <Button onClick={() => router.push('/settings')}> Edit Profile</Button>;
         case 'friends':
             return <Button disabled variant="secondary"><UserCheck className="mr-2 h-4 w-4" /> Friends</Button>;
         case 'pending_sent':
@@ -148,15 +194,23 @@ export default function ProfileClientPage({ uid }: { uid: string }) {
   if (isLoading) {
     return (
         <div className="flex justify-center items-start pt-10">
-            <Card className="w-full max-w-md">
+            <Card className="w-full max-w-lg">
                 <CardHeader className="items-center text-center">
                     <Skeleton className="h-24 w-24 rounded-full" />
                     <Skeleton className="h-8 w-48 mt-4" />
                 </CardHeader>
-                <CardContent className="space-y-4 text-center">
+                <CardContent className="space-y-4 text-center p-6">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
                      <Skeleton className="h-10 w-32 mx-auto mt-4" />
+                     <div className="pt-6">
+                        <Skeleton className="h-4 w-24 mx-auto mb-4" />
+                        <div className="flex justify-center gap-4">
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                        </div>
+                     </div>
                 </CardContent>
             </Card>
         </div>
@@ -169,13 +223,17 @@ export default function ProfileClientPage({ uid }: { uid: string }) {
 
   return (
     <div className="flex justify-center items-start pt-10">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader className="items-center text-center">
           <Avatar className="h-24 w-24 mb-4">
             <AvatarImage src={profileUser.photoURL} alt={`${profileUser.displayName}'s avatar`} />
             <AvatarFallback className="text-3xl">{profileUser.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <CardTitle className="text-3xl">{profileUser.displayName}</CardTitle>
+          <CardDescription className="flex items-center gap-2 text-base">
+            <Award className="h-5 w-5 text-accent" />
+            {profileUser.points.toLocaleString()} Points
+          </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
             {profileUser.bio ? (
@@ -186,6 +244,7 @@ export default function ProfileClientPage({ uid }: { uid: string }) {
             <div className="flex justify-center">
                 {currentUser && renderFriendButton()}
             </div>
+             <EarnedBadges user={profileUser} />
         </CardContent>
       </Card>
     </div>

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords } from "lucide-react"
+import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History } from "lucide-react"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -13,15 +13,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet, getBookById } from "@/lib/firestore"
+import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { SavedQuizzesDialog } from "@/components/study/saved-quizzes-dialog"
-import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
+import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
-import { ChallengeFriendDialog } from "./challenge-friend-dialog"
 
 
 type QuizState = "not_started" | "in_progress" | "submitted"
@@ -44,8 +43,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [score, setScore] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
-  
+  const [justSaved, setJustSaved] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false)
@@ -53,8 +51,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const { toast } = useToast()
   const { user, updateUserProfile } = useAuthContext()
   const router = useRouter()
-
-  const canChallenge = !!book && !!activeQuizSet;
 
   useEffect(() => {
     setBook(initialBook);
@@ -68,6 +64,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       setUserAnswers({});
       setScore(0);
       setQuizState(latestSet ? "in_progress" : "not_started");
+      setJustSaved(false);
     }
   }, [initialBook]);
 
@@ -77,6 +74,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setActiveQuizSet(null);
     setUserAnswers({})
     setScore(0)
+    setJustSaved(false);
     setQuizState("in_progress");
 
     try {
@@ -94,10 +92,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       }
       setGeneratedQuiz(result.quiz)
       setQuizState("in_progress")
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { points: increment(10) });
-      }
     } catch (error) {
       console.error("Error generating quiz:", error)
       toast({
@@ -127,41 +121,29 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         newScore++
       }
     })
-    
     setScore(newScore)
     setQuizState("submitted")
 
-    const pointsEarned = newScore * 10; // 10 points per correct answer
-
-    if(user) {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { points: increment(pointsEarned) });
-
-      if (newScore === quizToDisplay.length && quizToDisplay.length > 0) {
-          await awardBadge(user.uid, 'QUIZ_MASTER_1');
-          
-          const userDoc = await getDoc(userRef);
-          if (userDoc.exists()) {
-              const userData = userDoc.data() as UserProfile;
-              const perfectScoreCount = userData.badges?.filter(b => b === 'QUIZ_MASTER_1' || b === 'QUIZ_MASTER_5').length || 0;
-               if (perfectScoreCount >= 4) { // 4 because we award the 5th here.
-                  await awardBadge(user.uid, 'QUIZ_MASTER_5');
-              }
-              const updatedUser = (await getDoc(userRef)).data() as UserProfile;
-              updateUserProfile(updatedUser);
-          }
-          toast({
-              title: "Badge Unlocked!",
-              description: "You earned the 'Perfect Score' badge and 100 bonus points!",
-          })
-      } else {
-        toast({
-          title: "Quiz Submitted!",
-          description: `You earned ${pointsEarned} points.`,
-        })
-      }
-      const updatedUser = (await getDoc(userRef)).data() as UserProfile;
-      updateUserProfile(updatedUser);
+    if (newScore === quizToDisplay.length && quizToDisplay.length > 0) {
+        if(user) {
+            await awardBadge(user.uid, 'QUIZ_MASTER_1');
+            
+            const userRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data() as UserProfile;
+                const perfectScoreCount = userData.badges?.filter(b => b === 'QUIZ_MASTER_1').length || 0;
+                 if (perfectScoreCount >= 4) { // 4 because the new one is not yet in the state
+                    await awardBadge(user.uid, 'QUIZ_MASTER_5');
+                }
+                // Force a refresh of the user profile to get new badges
+                updateUserProfile(userData);
+            }
+            toast({
+                title: "Badge Unlocked!",
+                description: "You earned the 'Perfect Score' badge.",
+            })
+        }
     }
   }
 
@@ -189,42 +171,26 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
     setIsSaving(true);
     try {
-        const saveParams: {
-          userId: string;
-          bookId?: string;
-          bookTitle: string;
-          quiz: QuizQuestion[];
-          saveNewQuizSet: boolean;
-          documentContent?: string;
-        } = {
+        const saveParams = {
             userId: user.uid,
             bookId: currentBookId,
             bookTitle: bookTitle.trim(),
             quiz: quizToSave,
             saveNewQuizSet: true,
+            ...(!currentBookId && { documentContent })
         };
-
-        if (!currentBookId) {
-            saveParams.documentContent = documentContent;
-        }
-        
         const updatedBook = await saveBook(saveParams);
-        
+
         onBookUpdate(updatedBook);
-        setBook(updatedBook);
-        setCurrentBookId(updatedBook.id);
-        
-        const newSet = updatedBook.savedQuizzes.slice(-1)[0];
-        setActiveQuizSet(newSet);
-        setGeneratedQuiz(null);
 
         if (!currentBookId) {
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
+        setJustSaved(true);
         toast({
             title: "Quiz Saved!",
-            description: `A new quiz set has been saved to "${bookTitle}". You can now challenge a friend.`,
+            description: `A new quiz set has been saved to "${bookTitle}".`,
         });
     } catch (error) {
         console.error("Error saving quiz:", error);
@@ -234,18 +200,11 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     }
   };
 
-  const handleChallengeClick = () => {
-    if (!canChallenge) {
-        toast({ variant: 'destructive', title: 'Cannot Start Challenge', description: 'Please save this quiz as a new set before challenging a friend.' });
-        return;
-    }
-    setIsChallengeDialogOpen(true);
-  }
-
   const handleLoadSet = (set: SavedQuizSet) => {
     setActiveQuizSet(set);
     setGeneratedQuiz(null);
     handleRetake();
+    setJustSaved(false);
     setIsSavedSetsOpen(false);
     toast({
         title: "Quiz Set Loaded",
@@ -255,7 +214,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   const handleBookUpdateFromDialog = (updatedBook: Book, deletedSetId?: string) => {
     onBookUpdate(updatedBook);
-    setBook(updatedBook);
+    // If the deleted set was the one being viewed, update the view
     if (activeQuizSet && activeQuizSet.id === deletedSetId) {
        const latestSet = updatedBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
        setActiveQuizSet(latestSet || null);
@@ -265,7 +224,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
-   
+  const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
+
+
   return (
     <>
     <div className="flex flex-col gap-4 h-full">
@@ -282,34 +243,38 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 value={bookTitle}
                 onChange={e => {
                     setBookTitle(e.target.value)
+                    setJustSaved(false);
                 }}
             />
         </div>
        )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={handleGenerateQuiz} disabled={isLoading}>
+      <div className="flex gap-2">
+        <Button onClick={handleGenerateQuiz} disabled={isLoading} className="flex-1">
           {isLoading ? (
-            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            <LoaderCircle className="mr-2 animate-spin" />
           ) : (
-            <Lightbulb className="mr-2 h-4 w-4" />
+            <Lightbulb className="mr-2" />
           )}
-          {quizToDisplay.length > 0 ? "Generate New" : "Generate Quiz"}
+          {activeQuizSet || generatedQuiz ? "Generate New Quiz" : "Generate Quiz"}
         </Button>
 
         {isNewUnsavedContent && (
             <Button
                 onClick={handleSaveQuiz}
-                disabled={isSaving || !bookTitle.trim()}
+                disabled={isSaveButtonDisabled}
+                variant={"default"}
+                className="flex-1"
             >
-                {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save as New Set
+                {isSaving ? <LoaderCircle className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                {justSaved ? "Saved" : "Save as New Set"}
             </Button>
         )}
-         {book && book.savedQuizzes && book.savedQuizzes.length > 0 && (
-          <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)}>
-              <History className="mr-2 h-4 w-4" />
-              View Saved
-          </Button>
+
+         {book && (
+            <Button variant="outline" onClick={() => setIsSavedSetsOpen(true)} disabled={!book.savedQuizzes || book.savedQuizzes.length === 0}>
+                <History className="mr-2 h-4 w-4" />
+                View Saved
+            </Button>
          )}
       </div>
 
@@ -337,7 +302,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
           ) : (quizState === "in_progress" || quizState === "submitted") && quizToDisplay.length > 0 ? (
              <div className="space-y-6">
                 {quizState === "submitted" && (
-                    <Card className="text-center bg-accent/10 border-accent/50">
+                    <Card className="text-center bg-primary/10 border-primary/50">
                         <CardHeader>
                             <CardTitle className="flex items-center justify-center gap-2">
                                 <Award className="text-yellow-500" />
@@ -348,7 +313,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                         <CardContent>
                            <p className="text-5xl font-bold">{Math.round((score / quizToDisplay.length) * 100)}%</p>
                            <p className="text-muted-foreground mt-1">({score} out of {quizToDisplay.length} correct)</p>
-                           <Progress value={(score / quizToDisplay.length) * 100} className="w-full mt-4 bg-accent" />
+                           <Progress value={(score / quizToDisplay.length) * 100} className="w-full mt-4" />
                         </CardContent>
                         <CardFooter className="flex justify-center">
                             <Button onClick={handleRetake} variant="secondary">
@@ -362,15 +327,15 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 {quizToDisplay.map((question, qIndex) => (
                     <Card key={qIndex} className={cn(
                         'transition-colors duration-300',
-                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-accent bg-accent/10' : 'border-destructive bg-destructive/10')
+                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10')
                     )}>
                         <CardHeader>
                             <CardTitle className="text-base flex justify-between items-start">
                                 <span>Question {qIndex + 1}</span>
                                 {quizState === 'submitted' && (
                                      userAnswers[qIndex] === question.correctAnswerIndex ? 
-                                     <Check className="h-5 w-5 text-accent-foreground flex-shrink-0" /> : 
-                                     <X className="h-5 w-5 text-destructive-foreground flex-shrink-0" />
+                                     <Check className="h-5 w-5 text-green-700 flex-shrink-0" /> : 
+                                     <X className="h-5 w-5 text-red-700 flex-shrink-0" />
                                 )}
                             </CardTitle>
                             <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
@@ -388,8 +353,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                                     return (
                                         <div key={oIndex} className={cn(
                                             "flex items-center space-x-3 p-3 rounded-md transition-colors",
-                                            quizState === "submitted" && isCorrect && "bg-accent/20",
-                                            quizState === "submitted" && !isCorrect && isSelected && "bg-destructive/20",
+                                            quizState === "submitted" && isCorrect && "bg-green-500/20",
+                                            quizState === "submitted" && !isCorrect && isSelected && "bg-red-500/20",
                                             quizState !== "submitted" && "hover:bg-muted/50 cursor-pointer",
                                             quizState === "submitted" && "cursor-default"
                                         )}>
@@ -406,15 +371,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 ))}
 
                 {quizState === "in_progress" && (
-                    <div className="flex gap-2">
-                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
-                            Submit Quiz
-                        </Button>
-                        <Button onClick={handleChallengeClick} variant="secondary">
-                           <Swords className="mr-2 h-4 w-4" />
-                            Challenge Friend
-                        </Button>
-                    </div>
+                    <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
+                        Submit Quiz
+                    </Button>
                 )}
              </div>
           ) : null}
@@ -428,12 +387,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         onLoadSet={handleLoadSet}
         onBookUpdate={handleBookUpdateFromDialog}
     />
-     <ChallengeFriendDialog
-        isOpen={isChallengeDialogOpen}
-        onClose={() => setIsChallengeDialogOpen(false)}
-        book={book}
-        quizSet={activeQuizSet}
-     />
     </>
   )
 }

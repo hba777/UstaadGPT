@@ -11,6 +11,8 @@ import {
   Users,
   Inbox,
   Library,
+  Award,
+  Swords,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -18,9 +20,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { Separator } from "./ui/separator"
 import { Button } from "./ui/button"
 
 export function MainNav() {
@@ -31,10 +32,10 @@ export function MainNav() {
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <BrainCircuit className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">UstaadGPT</span>
-        </div>
+        </Link>
       </SidebarHeader>
       <Separator />
       <SidebarMenu className="mt-4">
@@ -59,12 +60,26 @@ export function MainNav() {
           title="My Books"
           description="Review your saved books"
         />
+         <NavItem
+          href="/achievements"
+          isActive={isActive("/achievements")}
+          icon={<Award size={20} />}
+          title="Achievements"
+          description="View your earned badges"
+        />
+        <NavItem
+          href="/challenges"
+          isActive={isActive("/challenges")}
+          icon={<Swords size={20} />}
+          title="Challenges"
+          description="Take on quiz challenges"
+        />
         <NavItem
           href="/friends"
           isActive={isActive("/friends")}
           icon={<Users size={20} />}
           title="Friends"
-          description="Find and connect with users"
+          description="Find users & view leaderboard"
         />
          <NavItem
           href="/inbox"
@@ -81,9 +96,6 @@ export function MainNav() {
           description="Manage account & preferences"
         />
       </SidebarMenu>
-      <SidebarFooter className="mt-auto">
-        <p className="text-xs text-muted-foreground">© 2024 UstaadGPT</p>
-      </SidebarFooter>
     </>
   )
 }
@@ -104,36 +116,37 @@ function NavItem({
   return (
     <SidebarMenuItem>
       <Link href={href} passHref>
-        <Button
-          variant={isActive ? "secondary" : "ghost"}
-          className={cn("h-auto w-full justify-start p-3 relative")}
-          asChild
+        <div
+          className={cn(
+            "h-auto w-full justify-start p-3 relative rounded-md flex items-center group",
+            isActive ? "bg-secondary" : "hover:bg-accent/50"
+          )}
         >
-          <div className="flex items-center w-full">
-            <div
-              className={cn(
-                "mr-4 flex h-10 w-10 items-center justify-center rounded-lg",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted-foreground/20 text-muted-foreground"
-              )}
-            >
-              {icon}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-semibold">{title}</span>
-              {description && (
-                <span className="text-xs text-muted-foreground">
-                  {description}
-                </span>
-              )}
-            </div>
-            {isActive && (
-                 <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
+          <div
+            className={cn(
+              "mr-4 flex h-10 w-10 items-center justify-center rounded-lg",
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            {icon}
+          </div>
+          <div className="flex flex-col items-start">
+            <span className={cn("font-semibold", isActive && "text-secondary-foreground")}>{title}</span>
+            {description && (
+              <span className={cn("text-xs text-muted-foreground", isActive && "text-secondary-foreground/80")}>
+                {description}
+              </span>
             )}
           </div>
-        </Button>
+          {isActive && (
+                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
+          )}
+        </div>
       </Link>
     </SidebarMenuItem>
   )
 }
+
+    

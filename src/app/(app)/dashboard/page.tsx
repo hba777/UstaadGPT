@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Award, BookCheck, Flame } from 'lucide-react'
@@ -46,7 +47,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Learning Activity</CardTitle>
-          <CardDescription>An overview of your study sessions this year.</CardDescription>
+          <CardDescription>A monthly overview of your created books, quizzes, and flashcards.</CardDescription>
         </CardHeader>
         <CardContent>
           <ProgressChart />

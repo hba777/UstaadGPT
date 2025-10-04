@@ -15,9 +15,11 @@ import {
     Timestamp,
     setDoc,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    increment
   } from 'firebase/firestore'
   import { db } from '@/lib/firebase' // Your Firebase config
+  import type { UserProfile } from '@/models/user';
 
   export interface QuizQuestion {
     questionText: string;
@@ -48,18 +50,18 @@ import {
     title: string
     flashcards: Flashcard[] // Represents the latest/active flashcards
     quiz?: QuizQuestion[] // Represents the latest/active quiz
-    savedFlashcards?: SavedFlashcardSet[]
-    savedQuizzes?: SavedQuizSet[]
+    savedFlashcards: SavedFlashcardSet[]
+    savedQuizzes: SavedQuizSet[]
     createdAt: any
     updatedAt: any
-    documentContent?: string 
+    documentContent?: string[] | string
   }
   
   export interface SaveBookParams {
     userId: string;
     bookId?: string; // If updating existing book
     bookTitle: string;
-    documentContent?: string;
+    documentContent?: string[] | string;
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
     saveNewQuizSet?: boolean;
@@ -74,63 +76,78 @@ import {
     documentContent,
     flashcards,
     quiz,
-    saveNewFlashcardSet,
     saveNewQuizSet,
+    saveNewFlashcardSet,
   }: SaveBookParams): Promise<Book> {
     try {
       const isUpdating = !!bookId;
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
       
-      const bookData: Partial<Book> & { updatedAt: any } = {
-        userId,
-        title: bookTitle,
-        updatedAt: serverTimestamp(),
-      };
-  
-      if (documentContent !== undefined) bookData.documentContent = documentContent;
-      
-      const updatePayload: any = {
-        title: bookTitle,
-        updatedAt: serverTimestamp(),
-      };
+      let finalBookData: Book | null = null;
 
-      if (isUpdating) {
-        if (flashcards) {
-          updatePayload.flashcards = flashcards;
-          if (saveNewFlashcardSet) {
-            updatePayload.savedFlashcards = arrayUnion({
-              id: crypto.randomUUID(),
-              createdAt: new Date(),
-              cards: flashcards,
-            });
-          }
-        }
-        if (quiz) {
-          updatePayload.quiz = quiz;
-           if (saveNewQuizSet) {
-            updatePayload.savedQuizzes = arrayUnion({
-              id: crypto.randomUUID(),
-              createdAt: new Date(),
-              questions: quiz,
-            });
-          }
-        }
-        await updateDoc(bookRef, updatePayload);
-      } else {
+      if (!isUpdating) {
         // Create new book
-        bookData.createdAt = serverTimestamp();
-        bookData.flashcards = flashcards || [];
-        bookData.quiz = quiz || [];
-        bookData.savedFlashcards = [];
-        bookData.savedQuizzes = [];
-        await setDoc(bookRef, bookData, { merge: true });
+        const newBookData: Omit<Book, 'id'> = {
+          userId,
+          title: bookTitle,
+          documentContent: Array.isArray(documentContent) ? documentContent : (documentContent ? [documentContent] : []),
+          flashcards: flashcards || [],
+          quiz: quiz || [],
+          savedFlashcards: flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [],
+          savedQuizzes: quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(bookRef, newBookData);
+
+        const savedDoc = await getDoc(bookRef);
+        finalBookData = { id: savedDoc.id, ...savedDoc.data() } as Book;
+
+        // Check for librarian badges
+        const userBooks = await getUserBooks(userId);
+        const bookCount = userBooks.length; // This already includes the new book because we fetch after creation
+        let badgeToAward: string | null = null;
+        if (bookCount === 1) badgeToAward = 'LIBRARIAN_1';
+        else if (bookCount === 5) badgeToAward = 'LIBRARIAN_5';
+        else if (bookCount === 10) badgeToAward = 'LIBRARIAN_10';
+        
+        if (badgeToAward) {
+            await awardBadge(userId, badgeToAward);
+        }
+
+      } else {
+        // Update existing book
+        const updatePayload: any = {
+          title: bookTitle,
+          updatedAt: serverTimestamp(),
+        };
+        
+        if (saveNewFlashcardSet && flashcards) {
+          updatePayload.savedFlashcards = arrayUnion({
+            id: crypto.randomUUID(),
+            createdAt: new Date(),
+            cards: flashcards,
+          });
+        }
+        
+        if (saveNewQuizSet && quiz) {
+          updatePayload.savedQuizzes = arrayUnion({
+            id: crypto.randomUUID(),
+            createdAt: new Date(),
+            questions: quiz,
+          });
+        }
+        
+        await updateDoc(bookRef, updatePayload);
+        const updatedDoc = await getDoc(bookRef);
+        finalBookData = { id: updatedDoc.id, ...updatedDoc.data() } as Book;
       }
 
-      const savedDoc = await getDoc(bookRef);
-      if (!savedDoc.exists()) {
+      if (!finalBookData) {
         throw new Error("Failed to retrieve saved book");
       }
-      return { id: savedDoc.id, ...savedDoc.data() } as Book;
+      
+      return finalBookData;
 
     } catch (error) {
       console.error('Error saving book:', error);
@@ -232,10 +249,31 @@ import {
       
       return books.filter(book => 
         book.title.toLowerCase().includes(searchLower) ||
-        (book.documentContent && book.documentContent.toLowerCase().includes(searchLower))
+        (book.documentContent && Array.isArray(book.documentContent) && book.documentContent.join(' ').toLowerCase().includes(searchLower))
       )
     } catch (error) {
       console.error('Error searching books:', error)
       throw new Error('Failed to search books')
+    }
+  }
+
+  // Award a badge and points to a user
+  export async function awardBadge(userId: string, badgeId: string): Promise<void> {
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile;
+            if (!userData.badges?.includes(badgeId)) {
+                await updateDoc(userRef, {
+                    badges: arrayUnion(badgeId),
+                    points: increment(100) // Award 100 points for any new badge
+                });
+            }
+        }
+    } catch (error) {
+        console.error(`Error awarding badge ${badgeId} to user ${userId}:`, error);
+        // Don't throw, as this is a non-critical operation
     }
   }
