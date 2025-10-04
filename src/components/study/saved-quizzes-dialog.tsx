@@ -7,10 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type Book, type SavedQuizSet, deleteSavedQuizSet, getBookById } from "@/lib/firestore"
-import { History, Lightbulb, Eye, Trash2, LoaderCircle, Download } from "lucide-react"
+import { History, Lightbulb, Eye, Trash2, LoaderCircle, Download, Swords } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/context/AuthContext";
+import { ChallengeFriendDialog } from "./challenge-friend-dialog";
 
 interface SavedQuizzesDialogProps {
     isOpen: boolean
@@ -24,12 +25,19 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
     const { toast } = useToast();
     const { user } = useAuthContext();
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
+    const [challengeQuizSet, setChallengeQuizSet] = useState<SavedQuizSet | null>(null);
     
     const sortedSets = [...(book?.savedQuizzes || [])].sort((a, b) => {
         const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(0);
         const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(0);
         return dateB.getTime() - dateA.getTime();
     });
+
+    const handleChallengeClick = (set: SavedQuizSet) => {
+        setChallengeQuizSet(set);
+        setIsChallengeDialogOpen(true);
+    };
 
     const handleExport = (set: SavedQuizSet) => {
         if (set.questions.length === 0) {
@@ -102,6 +110,7 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
     }
 
     return (
+        <>
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -129,7 +138,7 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
                                                        Saved on {set.createdAt?.seconds ? new Date(set.createdAt.seconds * 1000).toLocaleString() : 'Unknown Date'}
                                                     </CardDescription>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-wrap justify-end gap-2">
                                                     <Button size="sm" variant="outline" onClick={() => onLoadSet(set)}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View
@@ -137,6 +146,10 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
                                                     <Button size="sm" variant="outline" onClick={() => handleExport(set)}>
                                                         <Download className="mr-2 h-4 w-4" />
                                                         Export
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" onClick={() => handleChallengeClick(set)}>
+                                                        <Swords className="mr-2 h-4 w-4" />
+                                                        Challenge
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
@@ -172,5 +185,12 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
                 </div>
             </DialogContent>
         </Dialog>
+        <ChallengeFriendDialog
+            isOpen={isChallengeDialogOpen}
+            onClose={() => setIsChallengeDialogOpen(false)}
+            book={book}
+            quizSet={challengeQuizSet}
+        />
+        </>
     )
 }

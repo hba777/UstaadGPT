@@ -21,8 +21,6 @@ import { SavedQuizzesDialog } from "@/components/study/saved-quizzes-dialog"
 import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
-import { ChallengeFriendDialog } from "./challenge-friend-dialog"
-
 
 type QuizState = "not_started" | "in_progress" | "submitted"
 
@@ -48,8 +46,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
   const [isSavedSetsOpen, setIsSavedSetsOpen] = useState(false)
-  const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
-
 
   const { toast } = useToast()
   const { user, updateUserProfile } = useAuthContext()
@@ -215,7 +211,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         setBook(updatedBook);
         setCurrentBookId(updatedBook.id);
         
-        // After saving, set the new quiz as the active one
         const newSet = updatedBook.savedQuizzes.slice(-1)[0];
         setActiveQuizSet(newSet);
         setGeneratedQuiz(null);
@@ -224,7 +219,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
-        setJustSaved(true); // Keep track that it was just saved
+        setJustSaved(true); 
         toast({
             title: "Quiz Saved!",
             description: `A new quiz set has been saved to "${bookTitle}". You can now challenge a friend.`,
@@ -259,23 +254,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     }
   }
 
-  const handleChallengeClick = () => {
-    const isReadyForChallenge = !!book?.id && !!activeQuizSet;
-    if (isReadyForChallenge) {
-        setIsChallengeDialogOpen(true);
-    } else {
-        toast({
-            variant: "default",
-            title: "Save Quiz First",
-            description: "Please save this quiz as a new set before challenging a friend.",
-        });
-    }
-  };
-
   const allQuestionsAnswered = Object.keys(userAnswers).length === quizToDisplay.length;
   const isNewUnsavedContent = !!generatedQuiz;
   const isSaveButtonDisabled = isSaving || justSaved || !isNewUnsavedContent || !bookTitle.trim();
-  const canChallenge = !!book?.id && !!activeQuizSet;
    
   return (
     <>
@@ -418,15 +399,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 ))}
 
                 {quizState === "in_progress" && (
-                    <div className="flex gap-2">
-                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="flex-1">
-                            Submit Quiz
-                        </Button>
-                        <Button onClick={handleChallengeClick} variant="outline" className="flex-1">
-                             <Swords className="mr-2 h-4 w-4" />
-                            Challenge Friend
-                        </Button>
-                    </div>
+                    <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
+                        Submit Quiz
+                    </Button>
                 )}
              </div>
           ) : null}
@@ -440,14 +415,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         onLoadSet={handleLoadSet}
         onBookUpdate={handleBookUpdateFromDialog}
     />
-     <ChallengeFriendDialog
-        isOpen={isChallengeDialogOpen}
-        onClose={() => setIsChallengeDialogOpen(false)}
-        book={book}
-        quizSet={activeQuizSet}
-     />
     </>
   )
 }
-
-    
