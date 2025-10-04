@@ -8,7 +8,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
-import { ChevronsUpDown, Check, LoaderCircle, Send, X } from "lucide-react";
+import { ChevronsUpDown, Check, LoaderCircle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/models/user";
 import type { Book, SavedQuizSet } from "@/lib/firestore";
@@ -65,7 +65,7 @@ export function ChallengeFriendDialog({ isOpen, onClose, book, quizSet }: Challe
           }
         }
         setFriends(friendList);
-      } catch (error) => {
+      } catch (error) {
         console.error("Error fetching friends:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not load your friends." });
       } finally {
