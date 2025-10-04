@@ -1,3 +1,4 @@
+
 // lib/firestore.ts
 import { 
     doc, 
@@ -310,9 +311,20 @@ import {
   export async function getQuizHistory(userId: string): Promise<QuizHistory[]> {
     try {
       const attemptsCollection = collection(db, 'quizAttempts');
-      const q = query(attemptsCollection, where('userId', '==', userId), orderBy('attemptedAt', 'desc'));
+      const q = query(attemptsCollection, where('userId', '==', userId));
       const attemptsSnapshot = await getDocs(q);
-      const attempts = attemptsSnapshot.docs.map(doc => doc.data() as QuizAttempt);
+      
+      const attempts: QuizAttempt[] = [];
+      attemptsSnapshot.forEach(doc => {
+          attempts.push(doc.data() as QuizAttempt);
+      });
+      
+      // Sort client-side
+      attempts.sort((a, b) => {
+        const dateA = a.attemptedAt?.seconds ? a.attemptedAt.seconds : 0;
+        const dateB = b.attemptedAt?.seconds ? b.attemptedAt.seconds : 0;
+        return dateB - dateA;
+      });
 
       // Create a map of bookId -> bookTitle for efficient lookup
       const userBooks = await getUserBooks(userId);
@@ -330,3 +342,5 @@ import {
       throw new Error('Failed to fetch quiz history.');
     }
   }
+
+    
