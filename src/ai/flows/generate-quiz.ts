@@ -37,7 +37,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are an expert in creating quizzes based on provided text content.
 
-  Based on the following document text, generate a {{{difficulty | "medium"}}} difficulty quiz with multiple-choice questions.
+  Based on the following document text, generate a {{{difficulty}}} difficulty quiz with multiple-choice questions.
   - "easy" questions should test basic recall and definitions.
   - "medium" questions should require some comprehension and application of concepts.
   - "hard" questions should require synthesis, analysis, or evaluation of the material.
@@ -56,7 +56,12 @@ const generateQuizFlow = ai.defineFlow(
     outputSchema: GenerateQuizOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    // Provide a default for difficulty if it's not present.
+    const flowInput = {
+      ...input,
+      difficulty: input.difficulty || 'medium',
+    };
+    const {output} = await prompt(flowInput);
     return output!;
   }
 );
