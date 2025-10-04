@@ -12,6 +12,7 @@ import {z} from 'genkit';
 
 const GenerateQuizInputSchema = z.object({
   documentText: z.string().describe('The text content of the document to generate a quiz from.'),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional().describe('The desired difficulty of the quiz.'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
@@ -36,7 +37,11 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are an expert in creating quizzes based on provided text content.
 
-  Based on the following document text, generate a quiz with multiple-choice questions.
+  Based on the following document text, generate a {{{difficulty | "medium"}}} difficulty quiz with multiple-choice questions.
+  - "easy" questions should test basic recall and definitions.
+  - "medium" questions should require some comprehension and application of concepts.
+  - "hard" questions should require synthesis, analysis, or evaluation of the material.
+  
   Each question should have a question text, an array of options, and the index of the correct answer.
   Return the output in the specified JSON format.
 
