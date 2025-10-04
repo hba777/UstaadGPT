@@ -37,6 +37,7 @@ export function WeaknessAnalysis() {
         const topicMap = new Map<string, { scores: number[], count: number, bookId: string }>();
 
         history.forEach(attempt => {
+          if (!attempt.bookId) return; // Guard against missing bookId
           if (!topicMap.has(attempt.bookTitle)) {
             topicMap.set(attempt.bookTitle, { scores: [], count: 0, bookId: attempt.bookId });
           }

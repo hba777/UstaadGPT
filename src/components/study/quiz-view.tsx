@@ -124,6 +124,10 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleSubmit = async () => {
+    if (!user || quizToDisplay.length === 0) return;
+
+    let currentBook = book;
+    let currentQuizSet = activeQuizSet;
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
@@ -134,14 +138,27 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setScore(newScore)
     setQuizState("submitted")
 
+    // If this is a new, unsaved quiz, save it first to get a bookId and quizSetId
+    if (generatedQuiz) {
+        toast({ title: "Saving your new quiz..." });
+        const savedBook = await handleSaveQuiz(generatedQuiz);
+        if (savedBook) {
+            currentBook = savedBook;
+            currentQuizSet = savedBook.savedQuizzes[savedBook.savedQuizzes.length - 1];
+        } else {
+            toast({ variant: "destructive", title: "Error", description: "Could not save the quiz, so this attempt won't be logged." });
+            return; // Exit if we couldn't save the book
+        }
+    }
+    
     const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
     const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
 
-    if (user && book?.id && activeQuizSet) {
+    if (currentBook?.id && currentQuizSet) {
       await logQuizAttempt({
         userId: user.uid,
-        bookId: book.id,
-        quizSetId: activeQuizSet.id,
+        bookId: currentBook.id,
+        quizSetId: currentQuizSet.id,
         score: finalScorePercentage,
         timeTaken: timeTaken,
       });
@@ -149,40 +166,38 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
     const pointsEarned = newScore * 10; // 10 points per correct answer
 
-    if(user) {
-      const userRef = doc(db, 'users', user.uid);
-      
-      const isPerfectScore = newScore === quizToDisplay.length && quizToDisplay.length > 0;
-      
-      let updateData: any = { points: increment(pointsEarned) };
-      if (isPerfectScore) {
-          updateData.perfectScoreCount = increment(1);
-      }
-      await updateDoc(userRef, updateData);
-
-      const updatedUserDoc = await getDoc(userRef);
-      const updatedUserData = updatedUserDoc.data() as UserProfile;
-
-      if (isPerfectScore) {
-          await awardBadge(user.uid, 'QUIZ_MASTER_1');
-           if ((updatedUserData.perfectScoreCount || 0) >= 5) {
-              await awardBadge(user.uid, 'QUIZ_MASTER_5');
-          }
-          toast({
-              title: "Badge Unlocked!",
-              description: "You earned the 'Perfect Score' badge and 100 bonus points!",
-          })
-      } else {
-        toast({
-          title: "Quiz Submitted!",
-          description: `You earned ${pointsEarned} points.`,
-        })
-      }
-      
-      // Fetch the final state of the user to update context
-      const finalUserDoc = await getDoc(userRef);
-      updateUserProfile(finalUserDoc.data() as UserProfile);
+    const userRef = doc(db, 'users', user.uid);
+    
+    const isPerfectScore = newScore === quizToDisplay.length;
+    
+    let updateData: any = { points: increment(pointsEarned) };
+    if (isPerfectScore) {
+        updateData.perfectScoreCount = increment(1);
     }
+    await updateDoc(userRef, updateData);
+
+    const updatedUserDoc = await getDoc(userRef);
+    const updatedUserData = updatedUserDoc.data() as UserProfile;
+
+    if (isPerfectScore) {
+        await awardBadge(user.uid, 'QUIZ_MASTER_1');
+         if ((updatedUserData.perfectScoreCount || 0) >= 5) {
+            await awardBadge(user.uid, 'QUIZ_MASTER_5');
+        }
+        toast({
+            title: "Badge Unlocked!",
+            description: "You earned the 'Perfect Score' badge and 100 bonus points!",
+        })
+    } else {
+      toast({
+        title: "Quiz Submitted!",
+        description: `You earned ${pointsEarned} points.`,
+      })
+    }
+    
+    // Fetch the final state of the user to update context
+    const finalUserDoc = await getDoc(userRef);
+    updateUserProfile(finalUserDoc.data() as UserProfile);
   }
 
   const handleRetake = () => {
@@ -192,7 +207,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setQuizStartTime(Date.now());
   }
   
-  const handleSaveQuiz = async () => {
+  const handleSaveQuiz = async (quizToSave: QuizQuestion[] | null = generatedQuiz): Promise<Book | undefined> => {
     if (!user) {
         toast({ variant: "destructive", title: "Please sign in to save quizzes." });
         return;
@@ -202,7 +217,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         return;
     }
     
-    const quizToSave = generatedQuiz;
     if (!quizToSave || quizToSave.length === 0) {
         toast({ variant: "destructive", title: "Generate a new quiz before saving." });
         return;
@@ -249,6 +263,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
             title: "Quiz Saved!",
             description: `A new quiz set has been saved to "${bookTitle}". You can now challenge a friend.`,
         });
+        return updatedBook;
     } catch (error) {
         console.error("Error saving quiz:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not save quiz." });
@@ -322,7 +337,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
         {isNewUnsavedContent && (
             <Button
-                onClick={handleSaveQuiz}
+                onClick={() => handleSaveQuiz()}
                 disabled={isSaving || !bookTitle.trim()}
             >
                 {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

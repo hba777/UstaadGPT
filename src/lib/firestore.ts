@@ -333,7 +333,7 @@ import {
       const quizHistory: QuizHistory[] = attempts.map(attempt => ({
         ...attempt,
         bookTitle: bookTitles.get(attempt.bookId) || 'Unknown Book',
-      }));
+      })).filter(h => h.bookTitle !== 'Unknown Book'); // Filter out attempts for deleted books
 
       return quizHistory;
 
