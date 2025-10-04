@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords } from "lucide-react"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { saveBook, awardBadge, type QuizQuestion, type Book, type SavedQuizSet, getBookById } from "@/lib/firestore"
+import { saveBook, awardBadge, logQuizAttempt, type QuizQuestion, type Book, type SavedQuizSet, getBookById } from "@/lib/firestore"
 import { useAuthContext } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -45,6 +45,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
+  const [quizStartTime, setQuizStartTime] = useState<number | null>(null);
+
   
   const [currentBookId, setCurrentBookId] = useState(initialBook?.id)
   const [bookTitle, setBookTitle] = useState(initialBook?.title || "")
@@ -68,6 +70,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       setUserAnswers({});
       setScore(0);
       setQuizState(latestSet ? "in_progress" : "not_started");
+      if (latestSet) setQuizStartTime(Date.now());
     }
   }, [initialBook]);
 
@@ -78,6 +81,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setUserAnswers({})
     setScore(0)
     setQuizState("in_progress");
+    setQuizStartTime(Date.now());
 
     try {
       const result = await generateQuiz({ documentText: documentContent })
@@ -131,6 +135,19 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setScore(newScore)
     setQuizState("submitted")
 
+    const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
+    const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
+
+    if (user && book && activeQuizSet) {
+      await logQuizAttempt({
+        userId: user.uid,
+        bookId: book.id,
+        quizSetId: activeQuizSet.id,
+        score: finalScorePercentage,
+        timeTaken: timeTaken,
+      });
+    }
+
     const pointsEarned = newScore * 10; // 10 points per correct answer
 
     if(user) {
@@ -168,7 +185,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const handleRetake = () => {
     setUserAnswers({})
     setScore(0)
-    setQuizState("in_progress")
+    setQuizState("in_progress");
+    setQuizStartTime(Date.now());
   }
   
   const handleSaveQuiz = async () => {
@@ -217,6 +235,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         const newSet = updatedBook.savedQuizzes.slice(-1)[0];
         setActiveQuizSet(newSet);
         setGeneratedQuiz(null);
+        setQuizStartTime(Date.now());
+
 
         if (!currentBookId) {
             router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
@@ -249,7 +269,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setIsSavedSetsOpen(false);
     toast({
         title: "Quiz Set Loaded",
-        description: `Loaded set from ${new Date(set.createdAt.seconds * 1000).toLocaleString()}.`
+        description: `Loaded set: "${set.name}".`
     })
   }
 
@@ -437,5 +457,3 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
-
-    

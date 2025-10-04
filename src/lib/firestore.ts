@@ -34,6 +34,7 @@ import {
 
   export interface SavedQuizSet {
     id: string;
+    name: string;
     createdAt: Timestamp;
     questions: QuizQuestion[];
   }
@@ -42,6 +43,15 @@ import {
     id: string;
     createdAt: Timestamp;
     cards: Flashcard[];
+  }
+
+  export interface QuizAttempt {
+    userId: string;
+    bookId: string;
+    quizSetId: string;
+    score: number; // e.g., 80 for 80%
+    timeTaken: number; // in seconds
+    attemptedAt: Timestamp;
   }
   
   export interface Book {
@@ -65,6 +75,7 @@ import {
     flashcards?: Flashcard[];
     quiz?: QuizQuestion[];
     saveNewQuizSet?: boolean;
+    quizSetName?: string;
     saveNewFlashcardSet?: boolean;
   }
   
@@ -77,6 +88,7 @@ import {
     flashcards,
     quiz,
     saveNewQuizSet,
+    quizSetName,
     saveNewFlashcardSet,
   }: SaveBookParams): Promise<Book> {
     try {
@@ -84,6 +96,9 @@ import {
       const bookRef = isUpdating ? doc(db, 'books', bookId) : doc(collection(db, 'books'));
       
       let finalBookData: Book | null = null;
+      const now = new Date();
+      const defaultQuizSetName = `Quiz - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
 
       if (!isUpdating) {
         // Create new book
@@ -94,7 +109,7 @@ import {
           flashcards: flashcards || [],
           quiz: quiz || [],
           savedFlashcards: flashcards ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, cards: flashcards }] : [],
-          savedQuizzes: quiz ? [{ id: crypto.randomUUID(), createdAt: new Date() as any, questions: quiz }] : [],
+          savedQuizzes: quiz ? [{ id: crypto.randomUUID(), name: quizSetName || defaultQuizSetName, createdAt: new Date() as any, questions: quiz }] : [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -133,6 +148,7 @@ import {
         if (saveNewQuizSet && quiz) {
           updatePayload.savedQuizzes = arrayUnion({
             id: crypto.randomUUID(),
+            name: quizSetName || defaultQuizSetName,
             createdAt: new Date(),
             questions: quiz,
           });
@@ -275,5 +291,18 @@ import {
     } catch (error) {
         console.error(`Error awarding badge ${badgeId} to user ${userId}:`, error);
         // Don't throw, as this is a non-critical operation
+    }
+  }
+
+  // Log a quiz attempt
+  export async function logQuizAttempt(attempt: Omit<QuizAttempt, 'attemptedAt'>): Promise<void> {
+    try {
+      await addDoc(collection(db, 'quizAttempts'), {
+        ...attempt,
+        attemptedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error logging quiz attempt:', error);
+      // We don't throw here as it's a background logging task and shouldn't block the user.
     }
   }

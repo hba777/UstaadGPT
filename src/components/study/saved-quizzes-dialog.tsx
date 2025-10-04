@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/context/AuthContext";
 import { ChallengeFriendDialog } from "./challenge-friend-dialog";
+import { Input } from "../ui/input";
 
 interface SavedQuizzesDialogProps {
     isOpen: boolean
@@ -27,6 +28,9 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [isChallengeDialogOpen, setIsChallengeDialogOpen] = useState(false);
     const [challengeQuizSet, setChallengeQuizSet] = useState<SavedQuizSet | null>(null);
+    const [editingSetId, setEditingSetId] = useState<string | null>(null);
+    const [editingSetName, setEditingSetName] = useState('');
+
     
     const sortedSets = [...(book?.savedQuizzes || [])].sort((a, b) => {
         const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(0);
@@ -109,6 +113,31 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
         }
     }
 
+    const handleSaveSetName = async (set: SavedQuizSet) => {
+        if (!book?.id || !user?.uid) return;
+        
+        // Find the index of the set to update
+        const setIndex = book.savedQuizzes.findIndex(s => s.id === set.id);
+        if (setIndex === -1) return;
+
+        // Create a new array with the updated set
+        const newSavedQuizzes = [...book.savedQuizzes];
+        newSavedQuizzes[setIndex] = { ...newSavedQuizzes[setIndex], name: editingSetName };
+
+        const bookRef = doc(db, 'books', book.id);
+        try {
+            await updateDoc(bookRef, { savedQuizzes: newSavedQuizzes });
+            const updatedBook = { ...book, savedQuizzes: newSavedQuizzes };
+            onBookUpdate(updatedBook);
+            toast({ title: "Name updated successfully!" });
+        } catch(e) {
+            console.error("Error updating set name:", e);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update set name." });
+        } finally {
+            setEditingSetId(null);
+        }
+    }
+
     return (
         <>
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -131,9 +160,21 @@ export function SavedQuizzesDialog({ isOpen, onClose, book, onLoadSet, onBookUpd
                                         <CardHeader className="pb-4">
                                             <div className="flex items-start justify-between">
                                                 <div>
-                                                    <CardTitle className="text-base">
-                                                        {set.questions.length}-Question Quiz
+                                                {editingSetId === set.id ? (
+                                                    <div className="flex gap-2 items-center">
+                                                        <Input
+                                                            value={editingSetName}
+                                                            onChange={(e) => setEditingSetName(e.target.value)}
+                                                            className="h-8"
+                                                        />
+                                                        <Button size="sm" onClick={() => handleSaveSetName(set)}>Save</Button>
+                                                        <Button size="sm" variant="ghost" onClick={() => setEditingSetId(null)}>Cancel</Button>
+                                                    </div>
+                                                ) : (
+                                                    <CardTitle className="text-base cursor-pointer" onClick={() => { setEditingSetId(set.id); setEditingSetName(set.name); }}>
+                                                        {set.name || `${set.questions.length}-Question Quiz`}
                                                     </CardTitle>
+                                                )}
                                                     <CardDescription>
                                                        Saved on {set.createdAt?.seconds ? new Date(set.createdAt.seconds * 1000).toLocaleString() : 'Unknown Date'}
                                                     </CardDescription>
