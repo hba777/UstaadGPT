@@ -131,15 +131,15 @@ function NavItem({
               "mr-4 flex h-10 w-10 items-center justify-center rounded-lg",
               isActive
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground group-hover:bg-accent group-hover:text-accent-foreground"
+                : "bg-muted text-muted-foreground"
             )}
           >
             {icon}
           </div>
           <div className="flex flex-col items-start">
-            <span className={cn("font-semibold", isActive ? "text-secondary-foreground" : "group-hover:text-accent-foreground")}>{title}</span>
+            <span className={cn("font-semibold", isActive && "text-secondary-foreground")}>{title}</span>
             {description && (
-              <span className={cn("text-xs", isActive ? "text-secondary-foreground/80" : "text-muted-foreground group-hover:text-accent-foreground/80")}>
+              <span className={cn("text-xs text-muted-foreground", isActive && "text-secondary-foreground/80")}>
                 {description}
               </span>
             )}
