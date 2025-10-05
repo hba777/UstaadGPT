@@ -426,7 +426,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                                 onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
                                 disabled={quizState === "submitted"}
                             >
-                                {question.options.map((option, oIndex) {
+                                {question.options.map((option, oIndex) => {
                                     const isCorrect = oIndex === question.correctAnswerIndex;
                                     const isSelected = userAnswers[qIndex] === oIndex;
 
@@ -496,3 +496,5 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
+
+    
