@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuthContext } from "@/context/AuthContext";
@@ -10,21 +11,44 @@ import { Progress } from "@/components/ui/progress";
 
 function BadgeCard({ badge, isEarned }: { badge: Badge, isEarned: boolean }) {
     const Icon = badge.icon;
-    const categoryColor = 
-        badge.category === 'Streak' ? 'text-accent bg-accent/10' :
-        badge.category === 'Librarian' ? 'text-primary bg-primary/10' :
-        'text-secondary bg-secondary/10';
+    
+    let categoryColorClass = '';
+    switch(badge.category) {
+        case 'Streak':
+            categoryColorClass = 'text-orange-500 bg-orange-500/10 border-orange-500/20 shadow-orange-500/20';
+            break;
+        case 'Librarian':
+            categoryColorClass = 'text-blue-500 bg-blue-500/10 border-blue-500/20 shadow-blue-500/20';
+            break;
+        case 'Quiz':
+            categoryColorClass = 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20 shadow-yellow-500/20';
+            break;
+        default:
+            categoryColorClass = 'text-primary bg-primary/10 border-primary/20 shadow-primary/20';
+    }
+
 
     return (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Card className={cn("text-center transition-all", isEarned ? 'border-accent/50 bg-accent/5' : 'bg-muted/50')}>
+                    <Card className={cn(
+                        "text-center transition-all duration-300", 
+                        isEarned 
+                            ? `border-2 shadow-lg ${categoryColorClass}` 
+                            : 'bg-muted/50 border-transparent'
+                    )}>
                         <CardContent className="p-6">
-                            <div className={cn("mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4", categoryColor, !isEarned && 'grayscale opacity-50')}>
+                            <div className={cn(
+                                "mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 transition-all", 
+                                isEarned ? categoryColorClass.replace('bg-opacity-10', 'bg-opacity-20') : 'grayscale opacity-40 bg-muted'
+                            )}>
                                 <Icon className="h-8 w-8" />
                             </div>
-                            <p className={cn("font-semibold", !isEarned && 'text-muted-foreground')}>
+                            <p className={cn(
+                                "font-semibold transition-colors", 
+                                isEarned ? 'text-foreground' : 'text-muted-foreground'
+                            )}>
                                 {badge.name}
                             </p>
                             {!isEarned && <Lock className="h-4 w-4 text-muted-foreground mx-auto mt-1" />}

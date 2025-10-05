@@ -1,4 +1,5 @@
-import { Flame, Library, Star, type LucideIcon } from "lucide-react";
+
+import { Flame, Library, Star, type LucideIcon, Rocket, Trophy, BookHeart, LibraryBig, Medal, Gem } from "lucide-react";
 
 export interface Badge {
     id: string;
@@ -19,24 +20,24 @@ export const badges: Record<string, Badge> = {
     },
     STREAK_10: {
         id: 'STREAK_10',
-        name: '10-Day Streak',
+        name: 'Rocket Fuel',
         description: 'Maintain a study streak for 10 consecutive days.',
-        icon: Flame,
+        icon: Rocket,
         category: 'Streak'
     },
     STREAK_30: {
         id: 'STREAK_30',
-        name: '30-Day Fire',
+        name: 'Streak Champion',
         description: 'Maintain a study streak for 30 consecutive days. Incredible!',
-        icon: Flame,
+        icon: Trophy,
         category: 'Streak'
     },
     // Librarian Badges
     LIBRARIAN_1: {
         id: 'LIBRARIAN_1',
-        name: 'First Book',
+        name: 'First Chapter',
         description: 'Create your first study book.',
-        icon: Library,
+        icon: BookHeart,
         category: 'Librarian'
     },
     LIBRARIAN_5: {
@@ -48,9 +49,9 @@ export const badges: Record<string, Badge> = {
     },
     LIBRARIAN_10: {
         id: 'LIBRARIAN_10',
-        name: 'Collector',
+        name: 'Head Librarian',
         description: 'Create 10 study books.',
-        icon: Library,
+        icon: LibraryBig,
         category: 'Librarian'
     },
     // Quiz Badges
@@ -65,7 +66,14 @@ export const badges: Record<string, Badge> = {
         id: 'QUIZ_MASTER_5',
         name: 'Quiz Whiz',
         description: 'Get a perfect score on 5 different quizzes.',
-        icon: Star,
+        icon: Medal,
+        category: 'Quiz'
+    },
+    QUIZ_MASTER_10: {
+        id: 'QUIZ_MASTER_10',
+        name: 'Quiz Legend',
+        description: 'Get a perfect score on 10 different quizzes.',
+        icon: Gem,
         category: 'Quiz'
     }
 };
