@@ -81,5 +81,3 @@ UstaadGPT is a modern, interactive web application designed to supercharge your 
 ├── public/                 # Static assets
 └── ...                     # Configuration files (tailwind, next.config, etc.)
 ```
-
-This should give you a great overview of the project! Let me know if you'd like to dive into another feature.
