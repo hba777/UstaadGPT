@@ -6,7 +6,7 @@ import {
     TabsTrigger,
   } from "@/components/ui/tabs"
   import { SummaryView } from "./summary-view"
-  import { QuizView } from "../quiz-view"
+  import { QuizView } from "./quiz-view"
   import { FlashcardView } from "./flashcard-view"
   import { ChatbotView } from "./chatbot-view"
   import type { Book } from "@/lib/firestore"
