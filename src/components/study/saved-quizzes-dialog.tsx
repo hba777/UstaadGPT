@@ -1,4 +1,3 @@
-
 "use client"
 import { useState } from "react";
 import jsPDF from "jspdf";
@@ -13,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/context/AuthContext";
 import { ChallengeFriendDialog } from "./challenge-friend-dialog";
 import { Input } from "../ui/input";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface SavedQuizzesDialogProps {
     isOpen: boolean

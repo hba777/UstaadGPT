@@ -131,8 +131,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleSubmit = async () => {
+    console.log("BUTTON CLICKED - handleSubmit called");
     console.log("handleSubmit triggered.");
-
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
