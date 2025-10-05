@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A simple text translation AI agent.
@@ -10,24 +11,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-// To make this work, you would need to install the Google Cloud Translate library:
-// npm install @google-cloud/translate
-//
-// And configure authentication for the Google Cloud project.
-//
-// Example of a full implementation:
-/*
-import {Translate} from '@google-cloud/translate/build/src/v2';
-const translateClient = new Translate();
-
-async function performTranslation(text: string, targetLanguage: string) {
-  let [translations] = await translateClient.translate(text, targetLanguage);
-  translations = Array.isArray(translations) ? translations : [translations];
-  return translations[0];
-}
-*/
-
 
 const TranslateTextInputSchema = z.object({
   text: z.string().describe('The text to translate.'),
@@ -59,9 +42,9 @@ const prompt = ai.definePrompt({
   prompt: `Translate the following text to the language specified by the code '{{{targetLanguage}}}'.
 
 Text to translate:
-{{{text}}}
+"{{{text}}}"
 
-Return ONLY the translated text.`,
+Return ONLY the translated text, with no additional commentary or quotation marks.`,
 });
 
 const translateTextFlow = ai.defineFlow(
@@ -72,10 +55,7 @@ const translateTextFlow = ai.defineFlow(
   },
   async input => {
     // In a real implementation, you would replace this prompt call
-    // with a direct call to the Google Translate API like:
-    // const translated = await performTranslation(input.text, input.targetLanguage);
-    // return { translatedText: translated };
-
+    // with a direct call to the Google Translate API.
     // For now, we use a prompt to simulate the behavior.
     const {output} = await prompt(input);
     return output!;
