@@ -229,22 +229,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         const updatedBook = await saveBook(saveParams);
         
         onBookUpdate(updatedBook);
-        setBook(updatedBook);
-        setCurrentBookId(updatedBook.id);
         
-        const newSet = updatedBook.savedQuizzes.slice(-1)[0];
-        setActiveQuizSet(newSet);
-        setGeneratedQuiz(null);
-        setQuizStartTime(Date.now());
-
-
         if (!currentBookId) {
-            router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
+          router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }
         
         toast({
             title: "Quiz Saved!",
-            description: `A new quiz set has been saved to "${bookTitle}". You can now challenge a friend.`,
+            description: `A new quiz set has been saved to "${bookTitle}".`,
         });
     } catch (error) {
         console.error("Error saving quiz:", error);
