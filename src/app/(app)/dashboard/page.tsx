@@ -15,17 +15,18 @@ import { useAuthContext } from '@/context/AuthContext';
 import { WeaknessAnalysis } from '@/components/dashboard/weakness-analysis';
 import { RecommendationCard } from '@/components/dashboard/recommendation-card';
 import { useEffect, useState } from 'react';
-import { getQuizHistory } from '@/lib/firestore';
+import { getUserBooks } from '@/lib/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Book } from '@/lib/firestore';
 
-interface CompletedCoursesStats {
+interface UploadedCoursesStats {
     total: number;
     lastMonth: number;
 }
 
 export default function DashboardPage() {
   const { user } = useAuthContext();
-  const [completedStats, setCompletedStats] = useState<CompletedCoursesStats | null>(null);
+  const [uploadedStats, setUploadedStats] = useState<UploadedCoursesStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
@@ -34,25 +35,21 @@ export default function DashboardPage() {
     const fetchStats = async () => {
         setIsLoadingStats(true);
         try {
-            const history = await getQuizHistory(user.uid);
+            const books = await getUserBooks(user.uid);
             
-            // Calculate total unique courses completed
-            const completedBookIds = new Set(history.map(h => h.bookId));
-            const totalCompleted = completedBookIds.size;
+            const totalUploaded = books.length;
 
-            // Calculate courses completed in the last month
             const oneMonthAgo = new Date();
             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-            const lastMonthAttempts = history.filter(h => h.attemptedAt.toDate() > oneMonthAgo);
-            const lastMonthBookIds = new Set(lastMonthAttempts.map(h => h.bookId));
-            const lastMonthCompleted = lastMonthBookIds.size;
+            const lastMonthBooks = books.filter(book => book.createdAt?.toDate() > oneMonthAgo);
+            const lastMonthUploaded = lastMonthBooks.length;
 
-            setCompletedStats({ total: totalCompleted, lastMonth: lastMonthCompleted });
+            setUploadedStats({ total: totalUploaded, lastMonth: lastMonthUploaded });
 
         } catch (error) {
             console.error("Failed to fetch dashboard stats", error);
-            setCompletedStats({ total: 0, lastMonth: 0 }); // Set to 0 on error
+            setUploadedStats({ total: 0, lastMonth: 0 }); // Set to 0 on error
         } finally {
             setIsLoadingStats(false);
         }
@@ -82,7 +79,7 @@ export default function DashboardPage() {
         {isLoadingStats ? (
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Courses Completed</CardTitle>
+                    <CardTitle className="text-sm font-medium">Courses Uploaded</CardTitle>
                     <BookCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -92,9 +89,9 @@ export default function DashboardPage() {
             </Card>
         ) : (
             <StatsCard
-              title="Courses Completed"
-              value={completedStats?.total.toString() || '0'}
-              description={`+${completedStats?.lastMonth || 0} from last month`}
+              title="Courses Uploaded"
+              value={uploadedStats?.total.toString() || '0'}
+              description={`+${uploadedStats?.lastMonth || 0} from last month`}
               icon={<BookCheck className="h-4 w-4 text-muted-foreground" />}
             />
         )}

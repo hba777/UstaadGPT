@@ -262,6 +262,10 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         const newSet = updatedBook.savedQuizzes.slice(-1)[0];
         setActiveQuizSet(newSet);
         setGeneratedQuiz(null);
+        setUserAnswers({}); // Clear answers after saving
+        setScore(0);
+        setQuizState("in_progress");
+
 
         if (!currentBookId) {
           router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
@@ -407,7 +411,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 {quizToDisplay.map((question, qIndex) => (
                     <Card key={qIndex} className={cn(
                         'transition-colors duration-300',
-                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500/50 bg-green-500/10' : 'border-destructive bg-destructive/10')
+                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500/50 bg-green-500/10' : 'border-destructive/20 bg-destructive/5')
                     )}>
                         <CardHeader>
                             <CardTitle className="text-base flex justify-between items-start">
@@ -415,7 +419,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                                 {quizState === 'submitted' && (
                                      userAnswers[qIndex] === question.correctAnswerIndex ? 
                                      <Check className="h-5 w-5 text-green-600 flex-shrink-0" /> : 
-                                     <X className="h-5 w-5 text-destructive-foreground flex-shrink-0" />
+                                     <X className="h-5 w-5 text-destructive flex-shrink-0" />
                                 )}
                             </CardTitle>
                             <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
