@@ -8,3 +8,4 @@ import '@/ai/flows/answer-questions.ts';
 import '@/ai/flows/generate-study-plan.ts';
 import '@/ai/flows/text-to-speech.ts';
 import '@/ai/flows/orchestrator.ts';
+import '@/ai/flows/translate-text.ts';
