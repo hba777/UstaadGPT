@@ -71,6 +71,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       setScore(0);
       setQuizState(latestSet ? "in_progress" : "not_started");
       if (latestSet) setQuizStartTime(Date.now());
+    } else {
+        setBookTitle('');
+        setCurrentBookId(undefined);
+        setActiveQuizSet(null);
+        setGeneratedQuiz(null);
+        setQuizState('not_started');
     }
   }, [initialBook]);
 
@@ -125,6 +131,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleSubmit = async () => {
+    console.log("handleSubmit triggered.");
+
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
@@ -138,10 +146,10 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
     const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
 
-    if (user && book && activeQuizSet) {
+    if (user && book && book.id && activeQuizSet && activeQuizSet.id) {
       const attemptData = {
         userId: user.uid,
-        bookId: book.id!,
+        bookId: book.id,
         quizSetId: activeQuizSet.id,
         score: finalScorePercentage,
         timeTaken: timeTaken,
@@ -154,11 +162,19 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         console.error("Failed to log quiz attempt from QuizView:", error);
       }
     } else {
-        console.log("Skipping quiz attempt log: Missing user, book, or activeQuizSet.", {
-            hasUser: !!user,
-            hasBook: !!book,
-            hasActiveQuizSet: !!activeQuizSet
+        console.log("Skipping quiz attempt log for one of the following reasons:", {
+            isUserLoggedIn: !!user,
+            isBookSaved: !!book?.id,
+            isQuizSetSaved: !!activeQuizSet?.id,
+            details: {
+                user: user ? user.uid : "no user",
+                book: book ? book.id : "no book or book id",
+                activeQuizSet: activeQuizSet ? activeQuizSet.id : "no active quiz set or set id",
+            }
         });
+        if (generatedQuiz) {
+            console.log("This was a newly generated quiz. It must be saved before attempts can be logged.");
+        }
     }
 
     const pointsEarned = newScore * 10; // 10 points per correct answer
@@ -242,7 +258,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         const updatedBook = await saveBook(saveParams);
         
         onBookUpdate(updatedBook);
-        
+        setBook(updatedBook);
+        setCurrentBookId(updatedBook.id);
+        const newSet = updatedBook.savedQuizzes.slice(-1)[0];
+        setActiveQuizSet(newSet);
+        setGeneratedQuiz(null);
+
         if (!currentBookId) {
           router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
         }

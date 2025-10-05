@@ -305,7 +305,8 @@ import {
       console.log("Successfully wrote to quizAttempts collection.");
     } catch (error) {
       console.error('Error logging quiz attempt in firestore.ts:', error);
-      // We don't throw here as it's a background logging task and shouldn't block the user.
+      // We re-throw the error so the calling function knows it failed.
+      throw new Error('Failed to log quiz attempt.');
     }
   }
 
@@ -333,3 +334,4 @@ import {
       throw new Error('Failed to fetch quiz history.');
     }
   }
+
