@@ -139,13 +139,26 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
 
     if (user && book && activeQuizSet) {
-      await logQuizAttempt({
+      const attemptData = {
         userId: user.uid,
-        bookId: book.id,
+        bookId: book.id!,
         quizSetId: activeQuizSet.id,
         score: finalScorePercentage,
         timeTaken: timeTaken,
-      });
+      };
+      console.log("Attempting to log quiz attempt with data:", attemptData);
+      try {
+        await logQuizAttempt(attemptData);
+        console.log("Quiz attempt logged successfully.");
+      } catch (error) {
+        console.error("Failed to log quiz attempt from QuizView:", error);
+      }
+    } else {
+        console.log("Skipping quiz attempt log: Missing user, book, or activeQuizSet.", {
+            hasUser: !!user,
+            hasBook: !!book,
+            hasActiveQuizSet: !!activeQuizSet
+        });
     }
 
     const pointsEarned = newScore * 10; // 10 points per correct answer

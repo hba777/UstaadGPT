@@ -296,13 +296,15 @@ import {
 
   // Log a quiz attempt
   export async function logQuizAttempt(attempt: Omit<QuizAttempt, 'attemptedAt'>): Promise<void> {
+    console.log("logQuizAttempt called with:", attempt);
     try {
       await addDoc(collection(db, 'quizAttempts'), {
         ...attempt,
         attemptedAt: serverTimestamp(),
       });
+      console.log("Successfully wrote to quizAttempts collection.");
     } catch (error) {
-      console.error('Error logging quiz attempt:', error);
+      console.error('Error logging quiz attempt in firestore.ts:', error);
       // We don't throw here as it's a background logging task and shouldn't block the user.
     }
   }
