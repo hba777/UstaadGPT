@@ -2,11 +2,12 @@
 "use client"
 
 import { useState } from "react"
-import { FlipHorizontal, Volume2, LoaderCircle } from "lucide-react"
+import { FlipHorizontal, Volume2, LoaderCircle, Languages } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { textToSpeech } from "@/ai/flows/text-to-speech"
+import { translateText } from "@/ai/flows/translate-text"
 import { useToast } from "@/hooks/use-toast"
 
 interface FlashcardProps {
@@ -17,18 +18,24 @@ interface FlashcardProps {
 export function Flashcard({ front, back }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isTranslated, setIsTranslated] = useState(false);
+  const [translatedFront, setTranslatedFront] = useState("");
+  const [translatedBack, setTranslatedBack] = useState("");
   const { toast } = useToast();
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't flip the card if the speech button was clicked
-    if ((e.target as HTMLElement).closest('[data-speech-button]')) {
+    // Don't flip the card if a button was clicked
+    if ((e.target as HTMLElement).closest('button')) {
         return;
     }
     setIsFlipped(!isFlipped)
   }
 
   const handlePlaySound = async () => {
-    const textToSay = isFlipped ? back : front;
+    const textToSay = isFlipped ? (isTranslated ? translatedBack : back) : (isTranslated ? translatedFront : front);
+    if (!textToSay) return;
+
     setIsSpeaking(true);
     try {
         const result = await textToSpeech(textToSay);
@@ -46,6 +53,36 @@ export function Flashcard({ front, back }: FlashcardProps) {
     }
   }
 
+  const handleTranslate = async () => {
+    if (isTranslated) {
+      setIsTranslated(false);
+      return;
+    }
+    
+    if (translatedFront && translatedBack) {
+      setIsTranslated(true);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const [frontResult, backResult] = await Promise.all([
+        translateText({ text: front, targetLanguage: 'ur' }),
+        translateText({ text: back, targetLanguage: 'ur' })
+      ]);
+      setTranslatedFront(frontResult.translatedText);
+      setTranslatedBack(backResult.translatedText);
+      setIsTranslated(true);
+    } catch (error) {
+      console.error("Error translating card:", error);
+      toast({ variant: 'destructive', title: 'Translation Failed' });
+    } finally {
+      setIsTranslating(false);
+    }
+  }
+
+  const currentFront = isTranslated ? translatedFront : front;
+  const currentBack = isTranslated ? translatedBack : back;
 
   return (
     <div>
@@ -57,10 +94,10 @@ export function Flashcard({ front, back }: FlashcardProps) {
             )}
         >
             <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-primary/20 p-6 text-center [backface-visibility:hidden]">
-            <p className="text-lg font-semibold text-card-foreground">{front}</p>
+              <p className="text-lg font-semibold text-card-foreground" dir={isTranslated ? "rtl" : "ltr"}>{currentFront}</p>
             </div>
             <div className="absolute flex h-full w-full flex-col justify-center items-center rounded-xl bg-secondary p-6 text-center text-secondary-foreground [transform:rotateY(180deg)] [backface-visibility:hidden]">
-            <p className="text-md">{back}</p>
+              <p className="text-md" dir={isTranslated ? "rtl" : "ltr"}>{currentBack}</p>
             </div>
         </div>
         </div>
@@ -70,18 +107,30 @@ export function Flashcard({ front, back }: FlashcardProps) {
                 Click card to flip
             </div>
             <Button
-            data-speech-button
-            variant="outline"
-            size="icon"
-            onClick={handlePlaySound}
-            disabled={isSpeaking}
-            aria-label="Read card text aloud"
+              variant="outline"
+              size="icon"
+              onClick={handlePlaySound}
+              disabled={isSpeaking || isTranslating}
+              aria-label="Read card text aloud"
             >
             {isSpeaking ? (
                 <LoaderCircle className="h-5 w-5 animate-spin" />
             ) : (
                 <Volume2 className="h-5 w-5" />
             )}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleTranslate}
+              disabled={isSpeaking || isTranslating}
+              aria-label="Translate card"
+            >
+              {isTranslating ? (
+                <LoaderCircle className="h-5 w-5 animate-spin" />
+              ) : (
+                <Languages className="h-5 w-5" />
+              )}
             </Button>
         </div>
     </div>

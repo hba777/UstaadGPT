@@ -44,7 +44,7 @@ const prompt = ai.definePrompt({
 Text to translate:
 "{{{text}}}"
 
-Return ONLY the translated text, with no additional commentary or quotation marks.`,
+Return ONLY the translated text, with no additional commentary, formatting, or quotation marks.`,
 });
 
 const translateTextFlow = ai.defineFlow(

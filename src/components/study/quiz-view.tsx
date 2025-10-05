@@ -2,8 +2,9 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords } from "lucide-react"
+import { Lightbulb, LoaderCircle, Check, X, Repeat, Award, Save, History, Swords, Languages } from "lucide-react"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
+import { translateText } from "@/ai/flows/translate-text"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -38,7 +39,11 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const [activeQuizSet, setActiveQuizSet] = useState<SavedQuizSet | null>(null);
   const [generatedQuiz, setGeneratedQuiz] = useState<QuizQuestion[] | null>(null);
   
-  const quizToDisplay = generatedQuiz ?? activeQuizSet?.questions ?? [];
+  const [translatedQuiz, setTranslatedQuiz] = useState<QuizQuestion[] | null>(null);
+  const [isTranslated, setIsTranslated] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  
+  const quizToDisplay = isTranslated && translatedQuiz ? translatedQuiz : (generatedQuiz ?? activeQuizSet?.questions ?? []);
 
   const [quizState, setQuizState] = useState<QuizState>("not_started");
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({})
@@ -61,6 +66,9 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
   useEffect(() => {
     setBook(initialBook);
+    setIsTranslated(false);
+    setTranslatedQuiz(null);
+
     if (initialBook) {
       const latestSet = initialBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
       setActiveQuizSet(latestSet || null);
@@ -85,6 +93,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setIsLoading(true)
     setGeneratedQuiz(null);
     setActiveQuizSet(null);
+    setTranslatedQuiz(null);
+    setIsTranslated(false);
     setUserAnswers({})
     setScore(0)
     setQuizState("in_progress");
@@ -132,8 +142,11 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleSubmit = async () => {
+    const originalQuiz = generatedQuiz ?? activeQuizSet?.questions ?? [];
+    if (originalQuiz.length === 0) return;
+
     let newScore = 0
-    quizToDisplay.forEach((question, index) => {
+    originalQuiz.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
         newScore++
       }
@@ -143,7 +156,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     setQuizState("submitted")
 
     const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
-    const finalScorePercentage = Math.round((newScore / quizToDisplay.length) * 100);
+    const finalScorePercentage = Math.round((newScore / originalQuiz.length) * 100);
 
     if (user && book && book.id && activeQuizSet && activeQuizSet.id) {
       const attemptData = {
@@ -182,7 +195,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, { points: increment(pointsEarned) });
 
-      if (newScore === quizToDisplay.length && quizToDisplay.length > 0) {
+      if (newScore === originalQuiz.length && originalQuiz.length > 0) {
           await awardBadge(user.uid, 'QUIZ_MASTER_1');
           
           const userDoc = await getDoc(userRef);
@@ -265,7 +278,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
         setUserAnswers({}); // Clear answers after saving
         setScore(0);
         setQuizState("in_progress");
-
+        setIsTranslated(false);
+        setTranslatedQuiz(null);
 
         if (!currentBookId) {
           router.replace(`/my-books/${updatedBook.id}`, { scroll: false })
@@ -294,6 +308,8 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   const handleLoadSet = (set: SavedQuizSet) => {
     setActiveQuizSet(set);
     setGeneratedQuiz(null);
+    setTranslatedQuiz(null);
+    setIsTranslated(false);
     handleRetake();
     setIsSavedSetsOpen(false);
     toast({
@@ -309,6 +325,47 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
        const latestSet = updatedBook.savedQuizzes?.slice().sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
        setActiveQuizSet(latestSet || null);
        setQuizState(latestSet ? 'in_progress' : 'not_started');
+    }
+  }
+
+  const handleTranslateQuiz = async () => {
+    const originalQuiz = generatedQuiz ?? activeQuizSet?.questions;
+    if (!originalQuiz || originalQuiz.length === 0) {
+      toast({ variant: 'destructive', title: 'No quiz to translate.' });
+      return;
+    }
+
+    if (isTranslated) {
+      setIsTranslated(false);
+      return;
+    }
+
+    if (translatedQuiz) {
+      setIsTranslated(true);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translatedQuestions: QuizQuestion[] = [];
+      for (const q of originalQuiz) {
+        const [questionText, ...options] = await Promise.all([
+          translateText({ text: q.questionText, targetLanguage: 'ur' }).then(r => r.translatedText),
+          ...q.options.map(opt => translateText({ text: opt, targetLanguage: 'ur' }).then(r => r.translatedText))
+        ]);
+        translatedQuestions.push({
+          ...q,
+          questionText,
+          options
+        });
+      }
+      setTranslatedQuiz(translatedQuestions);
+      setIsTranslated(true);
+    } catch (error) {
+      console.error("Error translating quiz:", error);
+      toast({ variant: 'destructive', title: 'Translation Failed', description: 'Could not translate the entire quiz.' });
+    } finally {
+      setIsTranslating(false);
     }
   }
 
@@ -360,6 +417,12 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
               View Saved
           </Button>
          )}
+         {quizToDisplay.length > 0 && (
+          <Button variant="outline" onClick={handleTranslateQuiz} disabled={isTranslating}>
+            {isTranslating ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Languages className="mr-2 h-4 w-4" />}
+            {isTranslated ? "Show Original" : "Translate to Urdu"}
+          </Button>
+         )}
       </div>
 
       <div className="flex-grow rounded-lg border bg-card text-card-foreground shadow-sm p-4 overflow-hidden min-h-0">
@@ -384,7 +447,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
               <p className="text-sm">Click the button above to generate a quiz.</p>
             </div>
           ) : (quizState === "in_progress" || quizState === "submitted") && quizToDisplay.length > 0 ? (
-             <div className="space-y-6">
+             <div className="space-y-6" dir={isTranslated ? "rtl" : "ltr"}>
                 {quizState === "submitted" && (
                     <Card className="text-center bg-accent/10 border-accent/50">
                         <CardHeader>
@@ -408,51 +471,55 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                     </Card>
                 )}
 
-                {quizToDisplay.map((question, qIndex) => (
-                    <Card key={qIndex} className={cn(
-                        'transition-colors duration-300',
-                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500/50 bg-green-500/10' : 'border-destructive/20 bg-destructive/5')
-                    )}>
-                        <CardHeader>
-                            <CardTitle className="text-base flex justify-between items-start">
-                                <span>Question {qIndex + 1}</span>
-                                {quizState === 'submitted' && (
-                                     userAnswers[qIndex] === question.correctAnswerIndex ? 
-                                     <Check className="h-5 w-5 text-green-600 flex-shrink-0" /> : 
-                                     <X className="h-5 w-5 text-destructive flex-shrink-0" />
-                                )}
-                            </CardTitle>
-                            <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <RadioGroup
-                                value={userAnswers[qIndex]?.toString()}
-                                onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
-                                disabled={quizState === "submitted"}
-                            >
-                                {question.options.map((option, oIndex) => {
-                                    const isCorrect = oIndex === question.correctAnswerIndex;
-                                    const isSelected = userAnswers[qIndex] === oIndex;
+                {quizToDisplay.map((question, qIndex) => {
+                    const originalQuestion = (generatedQuiz ?? activeQuizSet?.questions ?? [])[qIndex];
+                    return (
+                        <Card key={qIndex} className={cn(
+                            'transition-colors duration-300',
+                            quizState === 'submitted' && (userAnswers[qIndex] === originalQuestion.correctAnswerIndex ? 'border-green-500/50 bg-green-500/10' : 'border-destructive/20 bg-destructive/5')
+                        )}>
+                            <CardHeader>
+                                <CardTitle className="text-base flex justify-between items-start">
+                                    <span>Question {qIndex + 1}</span>
+                                    {quizState === 'submitted' && (
+                                        userAnswers[qIndex] === originalQuestion.correctAnswerIndex ? 
+                                        <Check className="h-5 w-5 text-green-600 flex-shrink-0" /> : 
+                                        <X className="h-5 w-5 text-destructive flex-shrink-0" />
+                                    )}
+                                </CardTitle>
+                                <CardDescription className="text-base text-foreground pt-2">{question.questionText}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <RadioGroup
+                                    value={userAnswers[qIndex]?.toString()}
+                                    onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
+                                    disabled={quizState === "submitted"}
+                                >
+                                    {question.options.map((option, oIndex) => {
+                                        const isCorrect = oIndex === originalQuestion.correctAnswerIndex;
+                                        const isSelected = userAnswers[qIndex] === oIndex;
 
-                                    return (
-                                        <div key={oIndex} className={cn(
-                                            "flex items-center space-x-3 p-3 rounded-md transition-colors",
-                                            quizState === "submitted" && isCorrect && "bg-green-500/20",
-                                            quizState === "submitted" && !isCorrect && isSelected && "bg-destructive/20",
-                                            quizState !== "submitted" && "hover:bg-muted/50 cursor-pointer",
-                                            quizState === "submitted" && "cursor-default"
-                                        )}>
-                                            <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
-                                            <Label htmlFor={`q${qIndex}o${oIndex}`} className={cn("flex-1", quizState !== 'submitted' ? 'cursor-pointer' : 'cursor-default')}>
-                                                {option}
-                                            </Label>
-                                        </div>
-                                    )
-                                })}
-                            </RadioGroup>
-                        </CardContent>
-                    </Card>
-                ))}
+                                        return (
+                                            <div key={oIndex} className={cn(
+                                                "flex items-center space-x-3 p-3 rounded-md transition-colors",
+                                                quizState === "submitted" && isCorrect && "bg-green-500/20",
+                                                quizState === "submitted" && !isCorrect && isSelected && "bg-destructive/20",
+                                                quizState !== "submitted" && "hover:bg-muted/50 cursor-pointer",
+                                                quizState === "submitted" && "cursor-default"
+                                            )}>
+                                                <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
+                                                <Label htmlFor={`q${qIndex}o${oIndex}`} className={cn("flex-1", quizState !== 'submitted' ? 'cursor-pointer' : 'cursor-default')}>
+                                                    {option}
+                                                </Label>
+                                            </div>
+                                        )
+                                    })}
+                                </RadioGroup>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+
 
                 {quizState === "in_progress" && (
                     <div className="flex gap-2">
