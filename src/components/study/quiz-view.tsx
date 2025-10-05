@@ -453,7 +453,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
                 {quizState === "in_progress" && (
                     <div className="flex gap-2">
-                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered} className="w-full">
+                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered || isNewUnsavedContent} className="w-full" title={isNewUnsavedContent ? "Please save the quiz before submitting" : ""}>
                             Submit Quiz
                         </Button>
                         <Button onClick={handleChallengeClick} variant="secondary">
@@ -483,3 +483,5 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
+
+    
