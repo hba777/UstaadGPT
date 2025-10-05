@@ -407,14 +407,14 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                 {quizToDisplay.map((question, qIndex) => (
                     <Card key={qIndex} className={cn(
                         'transition-colors duration-300',
-                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-accent bg-accent/10' : 'border-destructive bg-destructive/10')
+                        quizState === 'submitted' && (userAnswers[qIndex] === question.correctAnswerIndex ? 'border-green-500/50 bg-green-500/10' : 'border-destructive bg-destructive/10')
                     )}>
                         <CardHeader>
                             <CardTitle className="text-base flex justify-between items-start">
                                 <span>Question {qIndex + 1}</span>
                                 {quizState === 'submitted' && (
                                      userAnswers[qIndex] === question.correctAnswerIndex ? 
-                                     <Check className="h-5 w-5 text-accent-foreground flex-shrink-0" /> : 
+                                     <Check className="h-5 w-5 text-green-600 flex-shrink-0" /> : 
                                      <X className="h-5 w-5 text-destructive-foreground flex-shrink-0" />
                                 )}
                             </CardTitle>
@@ -433,7 +433,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                                     return (
                                         <div key={oIndex} className={cn(
                                             "flex items-center space-x-3 p-3 rounded-md transition-colors",
-                                            quizState === "submitted" && isCorrect && "bg-accent/20",
+                                            quizState === "submitted" && isCorrect && "bg-green-500/20",
                                             quizState === "submitted" && !isCorrect && isSelected && "bg-destructive/20",
                                             quizState !== "submitted" && "hover:bg-muted/50 cursor-pointer",
                                             quizState === "submitted" && "cursor-default"
@@ -496,5 +496,3 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
-
-    
