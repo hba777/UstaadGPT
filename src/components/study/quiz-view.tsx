@@ -22,6 +22,7 @@ import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/models/user"
 import { ChallengeFriendDialog } from "./challenge-friend-dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 
 type QuizState = "not_started" | "in_progress" | "submitted"
@@ -131,8 +132,6 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
   }
 
   const handleSubmit = async () => {
-    console.log("BUTTON CLICKED - handleSubmit called");
-    console.log("handleSubmit triggered.");
     let newScore = 0
     quizToDisplay.forEach((question, index) => {
       if (userAnswers[index] === question.correctAnswerIndex) {
@@ -427,7 +426,7 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
                                 onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
                                 disabled={quizState === "submitted"}
                             >
-                                {question.options.map((option, oIndex) => {
+                                {question.options.map((option, oIndex) {
                                     const isCorrect = oIndex === question.correctAnswerIndex;
                                     const isSelected = userAnswers[qIndex] === oIndex;
 
@@ -453,9 +452,23 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
 
                 {quizState === "in_progress" && (
                     <div className="flex gap-2">
-                        <Button onClick={handleSubmit} disabled={!allQuestionsAnswered || isNewUnsavedContent} className="w-full" title={isNewUnsavedContent ? "Please save the quiz before submitting" : ""}>
-                            Submit Quiz
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {/* The span is necessary to allow the tooltip to show even when the button is disabled */}
+                              <span tabIndex={isNewUnsavedContent ? 0 : -1}>
+                                <Button onClick={handleSubmit} disabled={!allQuestionsAnswered || isNewUnsavedContent} className="w-full">
+                                    Submit Quiz
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isNewUnsavedContent && (
+                              <TooltipContent>
+                                <p>Please save the quiz before submitting.</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                         <Button onClick={handleChallengeClick} variant="secondary">
                            <Swords className="mr-2 h-4 w-4" />
                             Challenge Friend
@@ -483,5 +496,3 @@ export function QuizView({ documentContent, book: initialBook, onBookUpdate }: Q
     </>
   )
 }
-
-    
